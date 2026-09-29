@@ -91,6 +91,7 @@ struct BlurtApp: App {
         }
       }
       .windowResizability(.contentSize)
+      .defaultPosition(.topLeading)
     // Pin the harness to the top-leading corner so it never overlaps the
     // centered main window: the two stay simultaneously interactable, so a test
     // can drive a dictation on the harness and read the result on the ready
