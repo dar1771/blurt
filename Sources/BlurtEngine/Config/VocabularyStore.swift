@@ -32,15 +32,6 @@ public struct VocabularyStore {
     defaults.set(Self.deduplicated(terms), forKey: Self.defaultsKey)
   }
 
-  public func add(_ term: String) {
-    save(terms + [term])
-  }
-
-  public func remove(_ term: String) {
-    let key = term.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    save(terms.filter { $0.lowercased() != key })
-  }
-
   public static func deduplicated(_ terms: [String]) -> [String] {
     var seen = Set<String>()
     return terms.compactMap { value in

@@ -16,7 +16,6 @@ final class AppCoordinator: ObservableObject {
   let onInsertLast: @MainActor @Sendable () -> Void
   let onOpenHistory: @MainActor @Sendable () -> Void
   let onRecordingStarted: @MainActor @Sendable () -> Void
-  let onTranscriptSaved: @MainActor @Sendable (String) -> Void
   let onDictationFailed: @MainActor @Sendable (String) -> Void
   let onDictationDiscarded: @MainActor @Sendable () -> Void
   let onRecordChanged: @MainActor @Sendable (DictationRecord) -> Void
@@ -91,7 +90,6 @@ final class AppCoordinator: ObservableObject {
     self.onInsertLast = onInsertLast
     self.onOpenHistory = onOpenHistory
     self.onRecordingStarted = onRecordingStarted
-    self.onTranscriptSaved = onTranscriptSaved
     self.onDictationFailed = onDictationFailed
     self.onDictationDiscarded = onDictationDiscarded
     self.onRecordChanged = onRecordChanged

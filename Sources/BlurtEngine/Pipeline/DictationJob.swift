@@ -34,14 +34,14 @@ public struct VibeDictationPipeline: Sendable {
 
   public init(
     router: STTRouter,
-    makeAudioWriter: @escaping AudioWriterFactory = { try WAVAudioWriter(jobID: $0) },
+    makeAudioWriter: AudioWriterFactory? = nil,
     normalizer: (any TextNormalizer)? = nil,
     normalizationModel: @escaping @Sendable () -> String? = { nil },
     onRecordChanged: @escaping @Sendable (DictationRecord) -> Void = { _ in },
     onRecordDiscarded: @escaping @Sendable (UUID) -> Void = { _ in }
   ) {
     self.router = router
-    self.makeAudioWriter = makeAudioWriter
+    self.makeAudioWriter = makeAudioWriter ?? { try WAVAudioWriter(jobID: $0) }
     self.normalizer = normalizer
     self.normalizationModel = normalizationModel
     self.onRecordChanged = onRecordChanged
@@ -147,10 +147,8 @@ public enum LatestDictationDecision: Sendable, Equatable {
   }
 }
 
-public struct AutoInsertionEligibility: Sendable {
-  public init() {}
-
-  public func canInsert(
+struct AutoInsertionEligibility: Sendable {
+  func canInsert(
     job: DictationJob, newestGeneration: UInt64,
     currentBundleIdentifier: String?, currentWindowTitle: String?
   ) -> Bool {

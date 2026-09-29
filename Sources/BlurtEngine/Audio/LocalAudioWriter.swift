@@ -8,17 +8,17 @@ public protocol LocalAudioWriter: Sendable {
   func cancelAndDelete() async
 }
 
-public actor WAVAudioWriter: LocalAudioWriter {
-  public static let sampleRate = SyncSTTLimits.sampleRate
-  public static let channelCount = SyncSTTLimits.channelCount
-  public static let bitsPerSample = SyncSTTLimits.bitDepth
+actor WAVAudioWriter: LocalAudioWriter {
+  static let sampleRate = SyncSTTLimits.sampleRate
+  static let channelCount = SyncSTTLimits.channelCount
+  static let bitsPerSample = SyncSTTLimits.bitDepth
 
-  public let relativePath: String
-  public let fileURL: URL
+  let relativePath: String
+  let fileURL: URL
   private var handle: FileHandle?
   private var audioByteCount: UInt32 = 0
 
-  public init(jobID: UUID, baseDirectory: URL? = nil) throws {
+  init(jobID: UUID, baseDirectory: URL? = nil) throws {
     let root = try baseDirectory ?? Self.defaultDirectory()
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     relativePath = "Audio/\(jobID.uuidString).wav"
@@ -28,13 +28,13 @@ public actor WAVAudioWriter: LocalAudioWriter {
     try handle?.seekToEnd()
   }
 
-  public func append(_ pcm: Data) throws {
+  func append(_ pcm: Data) throws {
     guard let handle else { return }
     try handle.write(contentsOf: pcm)
     audioByteCount = audioByteCount.addingReportingOverflow(UInt32(pcm.count)).partialValue
   }
 
-  public func finish() throws {
+  func finish() throws {
     guard let handle else { return }
     try handle.seek(toOffset: 0)
     try handle.write(contentsOf: Self.header(audioBytes: audioByteCount))
@@ -42,13 +42,13 @@ public actor WAVAudioWriter: LocalAudioWriter {
     self.handle = nil
   }
 
-  public func cancelAndDelete() {
+  func cancelAndDelete() {
     try? handle?.close()
     handle = nil
     try? FileManager.default.removeItem(at: fileURL)
   }
 
-  public static func defaultDirectory() throws -> URL {
+  static func defaultDirectory() throws -> URL {
     let support = try FileManager.default.url(
       for: .applicationSupportDirectory, in: .userDomainMask,
       appropriateFor: nil, create: true)
@@ -81,12 +81,12 @@ extension Data {
   }
 }
 
-public struct PCMFrameFanout: Sendable {
-  public let shortFrames: AsyncStream<Data>
-  public let completion: Task<Void, any Error>
+struct PCMFrameFanout: Sendable {
+  let shortFrames: AsyncStream<Data>
+  let completion: Task<Void, any Error>
   private let shortFeed: ShortFrameFeed
 
-  public init(source: AsyncStream<Data>, writer: any LocalAudioWriter) {
+  init(source: AsyncStream<Data>, writer: any LocalAudioWriter) {
     let (stream, continuation) = AsyncStream.makeStream(
       of: Data.self, bufferingPolicy: .unbounded)
     let shortFeed = ShortFrameFeed(continuation: continuation)
@@ -107,7 +107,7 @@ public struct PCMFrameFanout: Sendable {
     }
   }
 
-  public func stopShortFeed() {
+  func stopShortFeed() {
     shortFeed.finish()
   }
 }

@@ -94,7 +94,7 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
   }
 }
 
-public enum AssemblyAILongError: Error, Sendable, Equatable {
+enum AssemblyAILongError: Error, Sendable, Equatable {
   case httpStatus(Int)
   case transcriptionFailed(String?)
 }

@@ -42,16 +42,6 @@ public struct STTRouter: Sendable {
     self.cutoverDelay = cutoverDelay
   }
 
-  public func start(
-    frames: AsyncStream<Data>, writer: any LocalAudioWriter,
-    context: TranscriptionContext?, vocabulary: [String],
-    onCutover: @escaping @Sendable () -> Void = {}
-  ) -> STTRoutingSession {
-    start(
-      frames: frames, writer: writer, contextProvider: { context },
-      vocabulary: vocabulary, onCutover: onCutover)
-  }
-
   /// Starts WAV persistence and the 115-second cutover immediately, while the
   /// short request may still be waiting briefly for press-time AX context.
   public func start(

@@ -12,7 +12,7 @@ struct STTRouterTests {
     let writer = RoutingAudioWriter()
     let (frames, feed) = AsyncStream.makeStream(of: Data.self)
     let session = STTRouter(shortClient: short, longClient: long).start(
-      frames: frames, writer: writer, context: nil, vocabulary: [])
+      frames: frames, writer: writer, contextProvider: { nil }, vocabulary: [])
     feed.yield(Data([1]))
     feed.finish()
     let result = try await session.stop(
@@ -30,7 +30,7 @@ struct STTRouterTests {
     let writer = RoutingAudioWriter()
     let (frames, feed) = AsyncStream.makeStream(of: Data.self)
     let session = STTRouter(shortClient: short, longClient: long).start(
-      frames: frames, writer: writer, context: nil, vocabulary: ["Swift"])
+      frames: frames, writer: writer, contextProvider: { nil }, vocabulary: ["Swift"])
     feed.yield(Data([1]))
     feed.finish()
     let result = try await session.stop(
@@ -48,7 +48,7 @@ struct STTRouterTests {
     let writer = RoutingAudioWriter()
     let (frames, feed) = AsyncStream.makeStream(of: Data.self)
     let session = STTRouter(shortClient: short, longClient: long).start(
-      frames: frames, writer: writer, context: nil, vocabulary: [])
+      frames: frames, writer: writer, contextProvider: { nil }, vocabulary: [])
     feed.finish()
     _ = try await session.stop(
       durationSeconds: 116, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))

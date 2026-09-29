@@ -9,6 +9,10 @@ public struct GlobalHotkey: Sendable, Equatable {
     self.requiresCommand = requiresCommand
   }
 
+  public func matches(keyCode: Int, optionDown: Bool, commandDown: Bool) -> Bool {
+    self.keyCode == keyCode && (!requiresOption || optionDown) && (!requiresCommand || commandDown)
+  }
+
   public static let insertLast = GlobalHotkey(keyCode: 9)  // V
   public static let openHistory = GlobalHotkey(keyCode: 4)  // H
 }

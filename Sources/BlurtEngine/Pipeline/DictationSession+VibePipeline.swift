@@ -1,26 +1,6 @@
 import Foundation
 
 extension DictationSession {
-  func startInstalledVibePipeline() {
-    pipelineTask = Task { [weak self] in await self?.runVibeTranscribeNormalizeInject() }
-  }
-
-  func setPhaseForTesting(_ phase: PipelinePhase) {
-    setPhase(phase)
-  }
-
-  func installVibeState(
-    route: STTRoutingSession, writer: any LocalAudioWriter, job: DictationJob, record: DictationRecord,
-    measurements: (latestGeneration: UInt64, recordedByteCount: Int)
-  ) {
-    routingSession = route
-    localAudioWriter = writer
-    currentJob = job
-    currentRecord = record
-    latestGeneration = measurements.latestGeneration
-    recordedByteCount = measurements.recordedByteCount
-  }
-
   func startVibeRouting(frames: AsyncStream<Data>) async {
     guard let pipeline = vibePipeline, let job = currentJob else { return }
     var record = DictationRecord(job: job, status: .processing)
@@ -157,9 +137,15 @@ extension DictationSession {
     deliverVibeTranscript(text: text, spoken: spoken)
 
     // A completed job may outlive the key sequence that started it. Generation
-    // is the authoritative freshness check: once another press exists, an older
-    // result remains in history but never types into the user's current target.
-    guard job.generation == latestGeneration else {
+    // and the current app determine whether auto-insertion is still safe.
+    // A stale or displaced result remains in history without typing elsewhere.
+    let currentTarget = await seams.captureFrontmost()
+    guard
+      AutoInsertionEligibility().canInsert(
+        job: job, newestGeneration: latestGeneration,
+        currentBundleIdentifier: currentTarget?.bundleIdentifier,
+        currentWindowTitle: nil)
+    else {
       setPhase(.idle)
       return
     }

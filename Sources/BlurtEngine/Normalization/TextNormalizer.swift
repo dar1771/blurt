@@ -2,8 +2,8 @@ public protocol TextNormalizer: Sendable {
   func normalize(rawTranscript: String, vocabulary: [String]) async throws -> String
 }
 
-public enum NormalizationFallback {
-  public static func short(
+enum NormalizationFallback {
+  static func short(
     normalized: String?, assemblyClean: String?, raw: String
   ) -> String {
     normalized.trimmedNonEmpty()
@@ -11,7 +11,7 @@ public enum NormalizationFallback {
       ?? raw
   }
 
-  public static func long(normalized: String?, raw: String) -> String {
+  static func long(normalized: String?, raw: String) -> String {
     normalized.trimmedNonEmpty() ?? raw
   }
 }

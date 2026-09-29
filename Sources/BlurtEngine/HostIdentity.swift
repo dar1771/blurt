@@ -111,6 +111,8 @@ public struct HostIdentity: Sendable, Equatable {
     releaseURL: URL(
       staticString: "https://api.github.com/repos/AssemblyAI/blurt/releases/latest"))
 
+  // Kept for external BlurtEngine hosts and the documented Blurt debug identity.
+  // periphery:ignore
   /// The identity a **debug build** of Blurt runs under — "Blurt Dev", which
   /// macOS already treats as a separate app (its own bundle id, TCC rows and
   /// defaults domain). Only `keychainService` differs from `.blurt`, because the

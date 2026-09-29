@@ -59,8 +59,7 @@ struct VibeDictateRetentionAndSettingsTests {
     #expect(store.terms.filter { $0.lowercased() == "swift" }.count == 1)
     store.save([" One ", "one", "Two"])
     #expect(store.terms == ["One", "Two"])
-    store.add("Three")
-    store.remove(" one ")
+    store.save(store.terms.filter { $0.lowercased() != "one" } + ["Three"])
     #expect(store.terms == ["Two", "Three"])
   }
 

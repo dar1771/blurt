@@ -1,5 +1,3 @@
-import Foundation
-
 // The release/microphone-stop half of the session lives separately from the
 // pipeline that consumes the completed recording.
 extension DictationSession {

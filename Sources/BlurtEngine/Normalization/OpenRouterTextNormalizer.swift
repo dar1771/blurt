@@ -79,7 +79,7 @@ public struct OpenRouterTextNormalizer: TextNormalizer {
   }
 }
 
-public enum OpenRouterError: Error, Sendable, Equatable {
+enum OpenRouterError: Error, Sendable, Equatable {
   case missingAPIKey
   case httpStatus(Int)
   case malformedResponse

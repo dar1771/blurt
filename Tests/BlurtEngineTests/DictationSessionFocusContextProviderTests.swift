@@ -3,7 +3,7 @@ import Testing
 @testable import BlurtEngine
 
 @Suite("DictationSession host focus context")
-struct DictationSessionFocusContextProviderTests {
+struct DictationSessionFocusContextTests {
   @Test("a supplied ordinary target is remembered, and a missing target fails closed")
   func hostFocusContextSafety() async throws {
     let safe = makeSession(

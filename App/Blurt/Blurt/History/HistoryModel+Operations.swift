@@ -27,9 +27,11 @@ extension HistoryModel {
   }
 
   func insert(_ record: DictationRecord) {
-    guard let text = record.preferredText else { return }
     Task {
       do {
+        guard let stored = try await historyStore?.record(id: record.id),
+          let text = stored.preferredText
+        else { return }
         try await injector.insert(recordID: record.id, text: text)
         message = "Текст вставлен."
       } catch { message = error.localizedDescription }

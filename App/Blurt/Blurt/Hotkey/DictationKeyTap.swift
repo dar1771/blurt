@@ -217,12 +217,21 @@ final class DictationKeyTap {
     // shortcut and supplies its menu discoverability. Avoid firing twice from
     // the listen-only event tap, and ignore keyboard auto-repeat everywhere.
     if type == .keyDown, !NSApp.isActive,
-      event.getIntegerValueField(.keyboardEventAutorepeat) == 0,
-      event.flags.contains(.maskCommand), event.flags.contains(.maskAlternate)
+      event.getIntegerValueField(.keyboardEventAutorepeat) == 0
     {
       let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
-      if keyCode == GlobalHotkey.insertLast.keyCode { onInsertLast() }
-      if keyCode == GlobalHotkey.openHistory.keyCode { onOpenHistory() }
+      let optionDown = event.flags.contains(.maskAlternate)
+      let commandDown = event.flags.contains(.maskCommand)
+      if GlobalHotkey.insertLast.matches(
+        keyCode: keyCode, optionDown: optionDown, commandDown: commandDown)
+      {
+        onInsertLast()
+      }
+      if GlobalHotkey.openHistory.matches(
+        keyCode: keyCode, optionDown: optionDown, commandDown: commandDown)
+      {
+        onOpenHistory()
+      }
     }
     guard let routed = routerEvent(type: type, event: event) else { return }
     let now = reference.duration(to: ContinuousClock.now)

@@ -121,7 +121,7 @@ struct VibeDictationIntegrationTests {
       cutoverDelay: .seconds(60)
     )
     .start(
-      frames: frames, writer: IntegrationAudioWriter(), context: nil, vocabulary: [])
+      frames: frames, writer: IntegrationAudioWriter(), contextProvider: { nil }, vocabulary: [])
     feed.yield(StubPCM.aboveMinimum)
     feed.finish()
     let session = DictationSession(
@@ -144,6 +144,57 @@ struct VibeDictationIntegrationTests {
     #expect(records.values.last?.status == .ready)
     #expect(injector.recordID == nil)
     #expect(await session.phase == .idle)
+  }
+
+  @Test("changing the frontmost application preserves history without auto-insertion")
+  func changedTargetIsNotInserted() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let frontmost = Mutex("com.example.Editor")
+    var seams = DictationSession.Seams.offline
+    seams.captureFrontmost = {
+      CapturedFocus(
+        pid: 42, processName: "Editor",
+        bundleIdentifier: frontmost.withLock { $0 })
+    }
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector,
+      vibePipeline: VibeDictationPipeline(
+        router: STTRouter(
+          shortClient: IntegrationShortClient(), longClient: IntegrationLongClient()),
+        onRecordChanged: { records.append($0) }), seams: seams)
+
+    await session.press()
+    frontmost.withLock { $0 = "com.example.Chat" }
+    await session.release()
+    await session.awaitPipeline()
+
+    #expect(records.values.last?.status == .ready)
+    #expect(injector.recordID == nil)
+    #expect(await session.phase == .idle)
+  }
+}
+
+extension DictationSession {
+  func startInstalledVibePipeline() {
+    pipelineTask = Task { [weak self] in await self?.runVibeTranscribeNormalizeInject() }
+  }
+
+  func setPhaseForTesting(_ phase: PipelinePhase) {
+    setPhase(phase)
+  }
+
+  func installVibeState(
+    route: STTRoutingSession, writer: any LocalAudioWriter, job: DictationJob, record: DictationRecord,
+    measurements: (latestGeneration: UInt64, recordedByteCount: Int)
+  ) {
+    routingSession = route
+    localAudioWriter = writer
+    currentJob = job
+    currentRecord = record
+    latestGeneration = measurements.latestGeneration
+    recordedByteCount = measurements.recordedByteCount
   }
 }
 
