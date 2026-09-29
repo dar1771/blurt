@@ -58,7 +58,21 @@ public actor CoreDataDictationHistoryStore: DictationHistoryStore {
       let request = ManagedDictationRecord.fetchRequest()
       request.predicate = NSPredicate(format: "id == %@", record.id as CVarArg)
       request.fetchLimit = 1
-      let object = try context.fetch(request).first ?? ManagedDictationRecord(context: context)
+      let object: ManagedDictationRecord
+      if let existing = try context.fetch(request).first {
+        object = existing
+      } else {
+        // Avoid NSManagedObject's `+entity` lookup: multiple live containers use
+        // distinct models for this same subclass (notably in concurrent tests).
+        guard
+          let entity = NSEntityDescription.entity(
+            forEntityName: "DictationRecord", in: context
+          )
+        else {
+          throw DictationHistoryStoreError.missingEntityDescription
+        }
+        object = ManagedDictationRecord(entity: entity, insertInto: context)
+      }
       object.apply(record)
       try context.save()
     }
@@ -159,6 +173,10 @@ public actor CoreDataDictationHistoryStore: DictationHistoryStore {
     model.entities = [entity]
     return model
   }
+}
+
+private enum DictationHistoryStoreError: Error {
+  case missingEntityDescription
 }
 
 @objc(ManagedDictationRecord)

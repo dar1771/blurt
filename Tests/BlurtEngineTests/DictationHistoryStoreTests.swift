@@ -70,4 +70,20 @@ struct DictationHistoryStoreTests {
     try await store.deleteAll()
     #expect(try await store.all().isEmpty)
   }
+
+  @Test("concurrent in-memory stores use their own entity descriptions")
+  func concurrentInMemoryStores() async throws {
+    let firstStore = try await CoreDataDictationHistoryStore(inMemory: true)
+    let secondStore = try await CoreDataDictationHistoryStore(inMemory: true)
+    let first = DictationRecord(job: DictationJob(generation: 1))
+    let second = DictationRecord(job: DictationJob(generation: 2))
+
+    async let firstUpsert: Void = firstStore.upsert(first)
+    async let secondUpsert: Void = secondStore.upsert(second)
+    try await firstUpsert
+    try await secondUpsert
+
+    #expect(try await firstStore.all() == [first])
+    #expect(try await secondStore.all() == [second])
+  }
 }
