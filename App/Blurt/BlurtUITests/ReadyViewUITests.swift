@@ -150,17 +150,19 @@ final class ReadyViewUITests: BlurtUITestCase {
     return (harness, main)
   }
 
-  /// Drives one dictation via the same hotkey path the pipeline tests use, then
-  /// waits for the harness echo (`recentDictations.entries.first?.text`) to show
-  /// the canned transcript — at which point the entry the ready screen renders
-  /// is in place.
+  /// Drives one dictation through the direct session controls, then waits for
+  /// the harness echo (`recentDictations.entries.first?.text`) to show the canned
+  /// transcript — at which point the entry the ready screen renders is in place.
+  /// The key-tap simulation has its own end-to-end coverage in
+  /// `DictationPipelineUITests`; these checks focus on the ready screen's Recent
+  /// list and copy action.
   private func driveDictation(via harness: XCUIElement) {
-    harness.buttons[UITestIdentifiers.hotkeyPressButton].click()
+    harness.buttons[UITestIdentifiers.startButton].click()
     let status = harness.staticTexts[UITestIdentifiers.statusLabel]
     waitForLabel(
       status, equals: UITestIdentifiers.statusRecording,
-      "A dictation should be recording before the harness releases the trigger")
-    harness.buttons[UITestIdentifiers.hotkeyReleaseButton].click()
+      "A dictation should be recording before the harness stops it")
+    harness.buttons[UITestIdentifiers.stopButton].click()
     let echo = harness.anyDescendant(identified: UITestIdentifiers.transcriptEchoLabel)
     waitForLabel(echo, equals: UITestIdentifiers.defaultCannedTranscript)
   }
