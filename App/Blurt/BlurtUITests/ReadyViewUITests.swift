@@ -147,6 +147,10 @@ final class ReadyViewUITests: BlurtUITestCase {
     XCTAssertTrue(harness.waitForExistence(timeout: 10), "Harness window not presented")
     let main = app.windows[UITestIdentifiers.mainWindowTitle]
     XCTAssertTrue(main.waitForExistence(timeout: 10), "Ready window not presented")
+    harness.click()
+    XCTAssertTrue(
+      harness.buttons[UITestIdentifiers.startButton].isHittable,
+      "The harness should be frontmost and its Start control hittable")
     return (harness, main)
   }
 
