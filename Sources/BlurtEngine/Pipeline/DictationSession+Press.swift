@@ -1,5 +1,27 @@
 import Dispatch
 
+private func resolveHostFocusContext(
+  from provider: @Sendable () -> TranscriptionContext?,
+  appName: String?,
+  recentTranscripts: [String],
+  keyTerms: [String]
+) -> TranscriptionContext? {
+  let supplied = provider()
+  let context = TranscriptionContext(
+    appName: appName ?? supplied?.appName,
+    windowTitle: supplied?.windowTitle,
+    fieldLabel: supplied?.fieldLabel,
+    priorText: supplied?.priorText,
+    selectedText: supplied?.selectedText,
+    recentTranscripts: recentTranscripts,
+    keyTerms: keyTerms,
+    textShortcuts: supplied?.textShortcuts ?? [],
+    // An absent context from an authoritative host provider does not
+    // prove the destination is ordinary; fail closed against history.
+    targetIsSecure: supplied?.targetIsSecure ?? true)
+  return context.isEmpty ? nil : context
+}
+
 // The press half of the pipeline — everything between the key going down and
 // `.recording` being claimed, including the mic bring-up that `.connecting`
 // covers. Split from `DictationSession.swift` to stay within the lint
@@ -193,20 +215,12 @@ extension DictationSession {
     let focusContextProvider = focusContextProvider
     Self.contextQueue.async {
       if let focusContextProvider {
-        let supplied = focusContextProvider()
-        let context = TranscriptionContext(
-          appName: captured?.processName ?? supplied?.appName,
-          windowTitle: supplied?.windowTitle,
-          fieldLabel: supplied?.fieldLabel,
-          priorText: supplied?.priorText,
-          selectedText: supplied?.selectedText,
+        let context = resolveHostFocusContext(
+          from: focusContextProvider,
+          appName: captured?.processName,
           recentTranscripts: recentTranscripts,
-          keyTerms: keyTerms,
-          textShortcuts: supplied?.textShortcuts ?? [],
-          // An absent context from an authoritative host provider does not
-          // prove the destination is ordinary; fail closed against history.
-          targetIsSecure: supplied?.targetIsSecure ?? true)
-        press.store(resolved: context.isEmpty ? nil : context)
+          keyTerms: keyTerms)
+        press.store(resolved: context)
         return
       }
       let field = captureFieldContext()

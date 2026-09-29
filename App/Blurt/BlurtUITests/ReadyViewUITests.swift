@@ -156,6 +156,10 @@ final class ReadyViewUITests: BlurtUITestCase {
   /// is in place.
   private func driveDictation(via harness: XCUIElement) {
     harness.buttons[UITestIdentifiers.hotkeyPressButton].click()
+    let status = harness.staticTexts[UITestIdentifiers.statusLabel]
+    waitForLabel(
+      status, equals: UITestIdentifiers.statusRecording,
+      "A dictation should be recording before the harness releases the trigger")
     harness.buttons[UITestIdentifiers.hotkeyReleaseButton].click()
     let echo = harness.anyDescendant(identified: UITestIdentifiers.transcriptEchoLabel)
     waitForLabel(echo, equals: UITestIdentifiers.defaultCannedTranscript)
