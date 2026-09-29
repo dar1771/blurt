@@ -172,16 +172,26 @@
   }
 
   extension DictationComponents {
-    /// The all-stub pipeline used under UI testing: no mic, no network, no
-    /// Accessibility paste. `UITestMic` inherits `MicCaptureProtocol`'s default
-    /// empty `levels` stream (the overlay meter isn't asserted), no-op
-    /// `warmUp()`, and stop-and-discard `cancelCapture()`.
+    /// The deterministic legacy pipeline used under UI testing: no mic, network,
+    /// or Accessibility paste. Production composition remains VibeDictate.
+    /// Focus capture is an additional test seam: UI-test runners cannot be
+    /// Accessibility-trusted, so they cannot prove a focused element isn't a
+    /// secure field. Supply an explicitly ordinary, content-free test target to
+    /// preserve production's fail-closed behavior while making the Recent path
+    /// observable. No credentials or user text are involved.
     static func uiTest() -> DictationComponents {
       DictationComponents(
         mic: UITestMic(),
         transcriber: UITestTranscriber(),
         injector: UITestInjector(),
-        vibePipeline: nil
+        vibePipeline: nil,
+        focusContextProvider: {
+          // No field text is needed. The synthetic label makes this explicit
+          // non-secure fixture context survive the engine's empty-snapshot
+          // collapse so the integration path can update Recent deterministically.
+          TranscriptionContext(
+            appName: "UI Test", fieldLabel: "Test destination", priorText: nil)
+        }
       )
     }
   }

@@ -63,6 +63,11 @@ public actor DictationSession {
   let styleNameProvider: @Sendable () -> String?
   /// The text shortcuts expanded into each transcript before the paste; live-read.
   let textShortcutsProvider: @Sendable () -> [TextShortcut]
+  /// Optional host-provided focus snapshot. When supplied, it replaces the
+  /// engine's Accessibility field read; hosts must set `targetIsSecure` only
+  /// when they can establish that verdict. A nil snapshot fails closed. Intended
+  /// for hosts that own focus semantics (including deterministic UI harnesses).
+  let focusContextProvider: (@Sendable () -> TranscriptionContext?)?
   /// Auto-releases the hotkey after this long so a held key can't run forever.
   /// Defaults to just under the dictation API's audio cap (see
   /// `SyncSTTLimits`) — recording past it would only produce audio the
@@ -186,6 +191,7 @@ public actor DictationSession {
     keyTermsProvider: (@Sendable () -> [String])? = nil,
     styleNameProvider: (@Sendable () -> String?)? = nil,
     textShortcutsProvider: (@Sendable () -> [TextShortcut])? = nil,
+    focusContextProvider: (@Sendable () -> TranscriptionContext?)? = nil,
     vibePipeline: VibeDictationPipeline? = nil,
     readinessCheck: @escaping @Sendable () -> BlurtError? = { nil },
     onTranscriptDelivered: (@Sendable (String, RecentDictations) -> Void)? = nil
@@ -194,7 +200,8 @@ public actor DictationSession {
       mic: mic, transcriber: transcriber, injector: injector,
       maxRecordingSeconds: maxRecordingSeconds, clock: clock,
       keyTermsProvider: keyTermsProvider, styleNameProvider: styleNameProvider,
-      textShortcutsProvider: textShortcutsProvider, vibePipeline: vibePipeline,
+      textShortcutsProvider: textShortcutsProvider,
+      focusContextProvider: focusContextProvider, vibePipeline: vibePipeline,
       readinessCheck: readinessCheck,
       onTranscriptDelivered: onTranscriptDelivered, seams: .production)
   }
@@ -214,6 +221,7 @@ public actor DictationSession {
     keyTermsProvider: (@Sendable () -> [String])? = nil,
     styleNameProvider: (@Sendable () -> String?)? = nil,
     textShortcutsProvider: (@Sendable () -> [TextShortcut])? = nil,
+    focusContextProvider: (@Sendable () -> TranscriptionContext?)? = nil,
     vibePipeline: VibeDictationPipeline? = nil,
     readinessCheck: @escaping @Sendable () -> BlurtError? = { nil },
     onTranscriptDelivered: (@Sendable (String, RecentDictations) -> Void)? = nil,
@@ -237,6 +245,7 @@ public actor DictationSession {
         return StyleProfileStore().active?.name
       }
     self.textShortcutsProvider = textShortcutsProvider ?? { TextShortcutStore().shortcuts }
+    self.focusContextProvider = focusContextProvider
     self.readinessCheck = readinessCheck
     self.onTranscriptDelivered = onTranscriptDelivered
     self.seams = seams

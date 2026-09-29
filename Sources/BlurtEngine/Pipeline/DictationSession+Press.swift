@@ -190,7 +190,25 @@ extension DictationSession {
     // values, so it needs no task context.
     let captureFieldContext = seams.captureFieldContext
     let textShortcutsProvider = textShortcutsProvider
+    let focusContextProvider = focusContextProvider
     Self.contextQueue.async {
+      if let focusContextProvider {
+        let supplied = focusContextProvider()
+        let context = TranscriptionContext(
+          appName: captured?.processName ?? supplied?.appName,
+          windowTitle: supplied?.windowTitle,
+          fieldLabel: supplied?.fieldLabel,
+          priorText: supplied?.priorText,
+          selectedText: supplied?.selectedText,
+          recentTranscripts: recentTranscripts,
+          keyTerms: keyTerms,
+          textShortcuts: supplied?.textShortcuts ?? [],
+          // An absent context from an authoritative host provider does not
+          // prove the destination is ordinary; fail closed against history.
+          targetIsSecure: supplied?.targetIsSecure ?? true)
+        press.store(resolved: context.isEmpty ? nil : context)
+        return
+      }
       let field = captureFieldContext()
       let context = TranscriptionContext(
         appName: captured?.processName,

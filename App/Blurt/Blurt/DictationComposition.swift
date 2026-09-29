@@ -12,6 +12,7 @@ struct DictationComponents {
   let transcriber: any TranscriberProtocol
   let injector: any InjectorProtocol
   let vibePipeline: VibeDictationPipeline?
+  let focusContextProvider: (@Sendable () -> TranscriptionContext?)?
 
   /// The real pipeline: a fresh `MicCapture`, the AssemblyAI dictation transcriber,
   /// and the clipboard-paste injector. This is what `AppCoordinator` builds, so
@@ -25,7 +26,8 @@ struct DictationComponents {
           shortClient: short, longClient: AssemblyAILongTranscriber()),
         normalizer: OpenRouterTextNormalizer(
           apiKeyProvider: { OpenRouterAPIKeyStore.current }),
-        normalizationModel: { OpenRouterModelStore().modelID }))
+        normalizationModel: { OpenRouterModelStore().modelID }),
+      focusContextProvider: nil)
   }
 }
 

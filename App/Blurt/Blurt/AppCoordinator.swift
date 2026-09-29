@@ -130,6 +130,7 @@ final class AppCoordinator: ObservableObject {
       // post-processing. It is evaluated per press so Settings edits apply to
       // the very next request without rebuilding the coordinator.
       keyTermsProvider: { VocabularyStore().terms },
+      focusContextProvider: components.focusContextProvider,
       vibePipeline: vibePipeline,
       // A press with no key saved fails fast as .failed(.apiKeyMissing) —
       // before any capture — and render(_:) routes it to the settings window.
