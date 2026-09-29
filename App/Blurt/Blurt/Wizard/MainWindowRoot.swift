@@ -94,6 +94,11 @@ struct MainWindowRoot: View {
         // sees it (`leaks.sh` can't fault an `AppDelegate` reachable from a root, and
         // `MemoryLeakTests` covers only the engine).
         appDelegate.openWindowByID = { [openWindow] id in openWindow(id: id) }
+        #if UITEST_HOOKS
+          if UITestMode.isActive {
+            appDelegate.openWindowByID?(UITestIdentifiers.harnessWindowID)
+          }
+        #endif
         // Permission polling runs for the app's whole life (started in the
         // controller's init), so the window only needs to refresh once on
         // appear to reflect any change made while it was closed.

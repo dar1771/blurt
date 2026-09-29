@@ -48,7 +48,10 @@ class BlurtUITestCase: XCTestCase {
     // missing, the follow-on steps just produce noise.
     continueAfterFailure = false
     app = XCUIApplication()
-    app.launchArguments += [UITestIdentifiers.launchArgument] + extraLaunchArguments
+    app.launchArguments +=
+      [
+        "-ApplePersistenceIgnoreState", "YES", UITestIdentifiers.launchArgument,
+      ] + extraLaunchArguments
     app.launch()
   }
 
