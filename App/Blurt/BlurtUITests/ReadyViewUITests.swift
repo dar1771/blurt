@@ -157,11 +157,13 @@ final class ReadyViewUITests: BlurtUITestCase {
   /// `DictationPipelineUITests`; these checks focus on the ready screen's Recent
   /// list and copy action.
   private func driveDictation(via harness: XCUIElement) {
+    // The pipeline's press-time readiness check reads the in-memory key store.
+    // Seed it through the same harness action as the other pipeline UI tests,
+    // rather than depending on ReadyView's launch-time setup side effect.
+    harness.buttons[UITestIdentifiers.setKeyButton].click()
     harness.buttons[UITestIdentifiers.startButton].click()
     let status = harness.staticTexts[UITestIdentifiers.statusLabel]
-    waitForLabel(
-      status, equals: UITestIdentifiers.statusRecording,
-      "A dictation should be recording before the harness stops it")
+    waitForLabel(status, equals: UITestIdentifiers.statusRecording)
     harness.buttons[UITestIdentifiers.stopButton].click()
     let echo = harness.anyDescendant(identified: UITestIdentifiers.transcriptEchoLabel)
     waitForLabel(echo, equals: UITestIdentifiers.defaultCannedTranscript)
