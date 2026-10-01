@@ -6,15 +6,6 @@ import XCTest
 // values are declared once there and referenced from both sides, so the app's
 // production views and these suites can no longer drift out of sync.
 
-extension UITestIdentifiers {
-  /// The Settings window's title. The `Settings` scene hosts a `TabView`, and
-  /// macOS titles a preference window after its selected pane — so the window
-  /// opens titled after the first tab, not "<bundle name> Settings". The label
-  /// itself lives in the shared file; only this framework-derived aliasing is
-  /// test-bundle knowledge.
-  static let settingsWindowTitle = generalSettingsTab
-}
-
 /// Base case that launches Blurt in UI-test mode before each test and tears it
 /// down after. Subclasses get a ready `app` plus a couple of shared helpers.
 ///
@@ -60,29 +51,23 @@ class BlurtUITestCase: XCTestCase {
     try await super.tearDown()
   }
 
-  /// Opens the Settings window via the standard ⌘, command and returns it. The
-  /// command is app-global, so it works regardless of which window has focus.
-  /// (Unlike the harness, Settings opens frontmost via ⌘,, so its controls are
-  /// hittable without closing the other windows.)
+  /// Opens Settings through the app's real window action and returns its window.
   @discardableResult
   func openSettingsWindow(timeout: TimeInterval = 10) -> XCUIElement {
     let settings = app.windows[UITestIdentifiers.settingsWindowTitle]
     if !settings.exists {
-      app.typeKey(",", modifierFlags: .command)
+      _ = harnessWindow()
+      app.buttons[UITestIdentifiers.openSettingsButton].click()
     }
     XCTAssertTrue(
       settings.waitForExistence(timeout: timeout),
-      "Settings window did not open after ⌘,")
+      "Settings window did not open; windows: \(app.windows.allElementsBoundByIndex.map(\.label))")
+    closeWindows(except: UITestIdentifiers.settingsWindowTitle)
     return settings
   }
 
-  /// Selects a Settings pane (a `TabView` tab in the preferences toolbar) by its
-  /// visible name. macOS exposes a preference tab as a radio button or a plain
-  /// button depending on the OS build, so try the radio group first and fall
-  /// back to a button. Returns a fresh proxy for the settings window: selecting
-  /// a pane retitles the window to the pane's name, so a proxy captured before
-  /// the switch (e.g. `openSettingsWindow()`'s) goes stale — scope follow-up
-  /// queries to the returned one.
+  /// Selects a Settings pane by its visible name. macOS exposes a tab as a
+  /// radio button or a plain button depending on the OS build.
   @discardableResult
   func selectSettingsTab(_ window: XCUIElement, named name: String) -> XCUIElement {
     let radio = window.radioButtons[name]
@@ -93,7 +78,7 @@ class BlurtUITestCase: XCTestCase {
       XCTAssertTrue(button.waitForExistence(timeout: 3), "Settings tab '\(name)' not found")
       button.click()
     }
-    return app.windows[name]
+    return app.windows[UITestIdentifiers.settingsWindowTitle]
   }
 
   /// The UI-test harness window (auto-presented at launch in test mode). Closes

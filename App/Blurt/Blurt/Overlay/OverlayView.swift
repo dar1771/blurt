@@ -91,7 +91,7 @@ struct OverlayView: View {
       // which is the whole point.
       waitingContent("Подключаюсь")
         .transition(.opacity)
-    case .recording:
+    case .recording, .longMode:
       // The orb beside the live waveform, its ring sweeping as it does in every
       // other state — the orb is one object and doesn't change behaviour with
       // the content next to it. The meter carries the level; the ring carries
@@ -108,9 +108,6 @@ struct OverlayView: View {
       }
       .padding(.horizontal, Self.contentInset)
       .transition(.opacity)
-    case .longMode:
-      waitingContent("Длинная запись")
-        .transition(.opacity)
     case .processing:
       // The meter stops and the ring takes over as the activity cue, so the
       // wait for the dictation API + paste reads as active work rather than a

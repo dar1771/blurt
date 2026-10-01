@@ -9,10 +9,8 @@ import SwiftUI
 // - Main window (`MainWindow`): the primary window, a `Window` scene opened via
 //   `openWindow(id:)`. While the app isn't fully configured it shows the setup
 //   wizard; once it is, it shows `ReadyView` (the shortcut readout).
-// - Settings (`SettingsWindowRoot`): change the API key or dictation shortcut. A
-//   `Settings` scene, so ⌘, comes wired for free; opened programmatically via the
-//   `openSettings` environment action (the ready screen's buttons and the menu
-//   bar item).
+// - Settings (`SettingsWindowRoot`): change the API key or dictation shortcut.
+//   An explicit window id lets the app menu, ready screen, and menu bar open it.
 
 enum MainWindow {
   /// Scene identifier for `openWindow(id:)` / the `Window(id:)` scene.
@@ -53,6 +51,8 @@ enum MainWindow {
   static let contentMargin: CGFloat = 24
 }
 
+enum SettingsWindow { static let id = "settings" }
+
 /// Root view of the main `Window` scene. It pulls the long-lived models off the
 /// app delegate (created at launch, before any window appears) and routes between
 /// the setup wizard (when the app isn't ready) and the ready screen (when it is).
@@ -64,17 +64,13 @@ struct MainWindowRoot: View {
     if let controller = appDelegate.wizardController, let coordinator = appDelegate.coordinator {
       Group {
         if controller.isReady {
-          if #available(macOS 14, *) {
-            ReadyViewWithSettings(appDelegate: appDelegate, coordinator: coordinator)
-          } else {
-            ReadyView(
-              coordinator: coordinator,
-              openSettings: { appDelegate.openSettings() },
-              editStyles: {
-                appDelegate.settingsOpensOnAdvanced = true
-                appDelegate.openSettings()
-              })
-          }
+          ReadyView(
+            coordinator: coordinator,
+            openSettings: { appDelegate.openSettings() },
+            editStyles: {
+              appDelegate.settingsOpensOnAdvanced = true
+              appDelegate.openSettings()
+            })
         } else {
           WizardView(controller: controller, coordinator: coordinator)
         }
@@ -118,22 +114,5 @@ struct MainWindowRoot: View {
       // before the run loop presents any scene, so this branch shouldn't show.
       Color.clear.frame(width: MainWindow.contentWidth, height: 320)
     }
-  }
-}
-
-@available(macOS 14, *)
-private struct ReadyViewWithSettings: View {
-  @ObservedObject var appDelegate: AppDelegate
-  @ObservedObject var coordinator: AppCoordinator
-  @Environment(\.openSettings) private var openSettings
-
-  var body: some View {
-    ReadyView(
-      coordinator: coordinator,
-      openSettings: { openSettings() },
-      editStyles: {
-        appDelegate.settingsOpensOnAdvanced = true
-        openSettings()
-      })
   }
 }

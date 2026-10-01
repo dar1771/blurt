@@ -136,7 +136,7 @@ public struct HostIdentity: Sendable, Equatable {
     defaultsPrefix: "VibeDictate",
     logDirectoryName: "VibeDictate",
     releaseURL: URL(
-      staticString: "https://api.github.com/repos/AssemblyAI/blurt/releases/latest"))
+      staticString: "https://api.github.com/repos/dar1771/blurt/releases/latest"))
 
   public static let vibeDictateDev = vibeDictate.withKeychainService("vibedictate-dev")
 

@@ -3,7 +3,7 @@ import SwiftUI
 
 struct VibeDictateSettingsTab: View {
   @ObservedObject var history: HistoryModel
-  @State private var openRouterKey = OpenRouterAPIKeyStore.current ?? ""
+  @State private var openRouterKey = ""
   @State private var vocabulary = VocabularyStore().terms.joined(separator: ", ")
   @State private var saveMessage: String?
   @AppStorage(OpenRouterModelStore.defaultsKey)
@@ -44,6 +44,12 @@ struct VibeDictateSettingsTab: View {
     }
     .formStyle(.grouped)
     .frame(minHeight: 430)
+    .onAppear {
+      #if UITEST_HOOKS
+        if UITestMode.isActive { return }
+      #endif
+      openRouterKey = OpenRouterAPIKeyStore.current ?? ""
+    }
   }
 
   private func saveAPIs() {

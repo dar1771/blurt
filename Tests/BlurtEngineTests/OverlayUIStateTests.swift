@@ -109,7 +109,7 @@ struct OverlayUIStateAccessibilityLabelTests {
     (.idle, "VibeDictate."),
     (.connecting, "Подключение к микрофону."),
     (.recording, "Идёт запись."),
-    (.longMode, "Длинная запись. Аудио сохраняется на Mac."),
+    (.longMode, "Идёт запись."),
     (.processing, "Обработка записи."),
     (.normalizing, "Обработка текста."),
     (.pasted, "Текст вставлен."),

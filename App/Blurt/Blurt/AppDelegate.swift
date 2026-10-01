@@ -56,12 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
   }
 
-  /// Compatibility route for macOS 13, where SwiftUI's openSettings action is unavailable.
+  /// Opens the app's Settings window from the menu, ready screen, or menu bar.
   func openSettings() {
     activateApp()
-    if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-      _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-    }
+    openWindowByID?(SettingsWindow.id)
   }
 
   /// Surfaces the main window *and* makes the app frontmost. Shared by the menu
@@ -113,6 +111,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    #if DEBUG
+      // Run a saved audio file through the same signed app and Keychain identity
+      // used by dictation. This lets local acceptance compare a reference clip
+      // without granting a separate command-line tool access to the API key.
+      let arguments = ProcessInfo.processInfo.arguments
+      if let option = arguments.firstIndex(of: "--transcribe-file"),
+        arguments.indices.contains(option + 1)
+      {
+        let audioURL = URL(fileURLWithPath: arguments[option + 1])
+        Task {
+          do {
+            let text = try await AssemblyAILongTranscriber().transcribe(
+              audioFileURL: audioURL, vocabulary: [])
+            FileHandle.standardOutput.write(Data((text + "\n").utf8))
+            exit(EXIT_SUCCESS)
+          } catch {
+            FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
+            exit(EXIT_FAILURE)
+          }
+        }
+        return
+      }
+    #endif
     // No permission prompts fire at launch. Accessibility (and Microphone) are
     // requested only when the user taps the matching button in the setup
     // screen's permission rows — see `PermissionsStepView`.

@@ -39,7 +39,7 @@ public enum OverlayUIState: Equatable, Sendable {
     case .idle: "VibeDictate."
     case .connecting: "Подключение к микрофону."
     case .recording: "Идёт запись."
-    case .longMode: "Длинная запись. Аудио сохраняется на Mac."
+    case .longMode: "Идёт запись."
     case .processing: "Обработка записи."
     case .normalizing: "Обработка текста."
     case .error(let message): message

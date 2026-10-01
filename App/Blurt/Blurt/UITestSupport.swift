@@ -237,6 +237,8 @@
         // lone-modifier CGEvent (which needs Accessibility trust the test host
         // lacks). Press then Release is a hold, so it records then transcribes.
         HStack(spacing: 8) {
+          Button("Open Settings") { appDelegate.openSettings() }
+            .accessibilityIdentifier(UITestIdentifiers.openSettingsButton)
           Button("Hotkey Press") { coordinator?.simulateDictationPressForTesting() }
             .accessibilityIdentifier(UITestIdentifiers.hotkeyPressButton)
           Button("Hotkey Release") { coordinator?.simulateDictationReleaseForTesting() }

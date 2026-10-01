@@ -26,17 +26,16 @@ enum UITestIdentifiers {
   /// The harness `Window`'s scene id.
   static let harnessWindowID = "uitest.harness"
 
-  // The Settings panes' tab labels (`SettingsWindowRoot` renders them; the
-  // XCUITest suite clicks them). macOS also titles a preferences window after
-  // its selected pane, so the General label doubles as the Settings window's
-  // opening title (see `settingsWindowTitle` in BlurtUITestSupport).
+  // The Settings window title and pane labels used by the app and UI tests.
   static let generalSettingsTab = "Основные"
+  static let settingsWindowTitle = "Настройки"
   static let advancedSettingsTab = "Дополнительно"
   static let textShortcutsTab = "Замены текста"
 
   // Test-harness controls (set in `UITestSupport.swift`).
   static let transcriptField = "uitest.transcript"
   static let setKeyButton = "uitest.setKey"
+  static let openSettingsButton = "uitest.openSettings"
   static let startButton = "uitest.start"
   static let stopButton = "uitest.stop"
   static let cancelButton = "uitest.cancel"

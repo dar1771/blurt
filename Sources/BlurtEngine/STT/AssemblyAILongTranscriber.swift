@@ -58,7 +58,9 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
   ) async throws -> R {
     var request = URLRequest(url: baseURL.appending(path: path))
     request.httpMethod = method
-    request.timeoutInterval = 90
+    // A ten-minute PCM recording is about 19 MB. Give its upload room on a
+    // slow connection; the small submit and poll requests retain the 90 s cap.
+    request.timeoutInterval = path == "v2/upload" ? 600 : 90
     request.httpBody = body
     request.setValue(key, forHTTPHeaderField: "Authorization")
     if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }

@@ -57,6 +57,9 @@ struct HostIdentityTests {
     #expect(HostIdentity.blurtDev.logDirectoryName == HostIdentity.blurt.logDirectoryName)
     #expect(HostIdentity.blurtDev.productName == HostIdentity.blurt.productName)
     #expect(HostIdentity.blurtDev.releaseURL == HostIdentity.blurt.releaseURL)
+    #expect(
+      HostIdentity.vibeDictate.releaseURL.absoluteString
+        == "https://api.github.com/repos/dar1771/blurt/releases/latest")
   }
 
   @Test("an unconfigured engine is Blurt")

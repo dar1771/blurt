@@ -1,8 +1,7 @@
 import BlurtEngine
 import SwiftUI
 
-/// Root view of the `Settings` scene. A `TabView` at the root of a `Settings`
-/// scene renders as the standard macOS preferences window — a segmented toolbar
+/// Root view of the Settings window. A `TabView` renders a segmented toolbar
 /// of panes (General / Advanced), each sized to its own content. This is the
 /// HIG-native answer to a settings screen that outgrows one pane: keeping every
 /// pane short means the window never has to grow past a small display (a single

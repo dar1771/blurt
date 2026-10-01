@@ -54,11 +54,9 @@ struct BlurtApp: App {
       BlurtCommands(appDelegate: appDelegate)
     }
 
-    // Settings scene: change the API key or dictation shortcut. SwiftUI wires
-    // the standard ⌘, "Settings…" menu item to this scene automatically; it's
-    // opened on demand (⌘, / the ready screen's link / the menu bar item, via
-    // `openSettings`), never at launch. Keeps standard window chrome.
-    Settings {
+    // Settings window: the app menu, ready screen, and menu-bar item all open
+    // this same scene through `AppDelegate.openSettings`.
+    Window("Настройки", id: SettingsWindow.id) {
       SettingsWindowRoot(appDelegate: appDelegate)
     }
     .windowResizability(.contentSize)

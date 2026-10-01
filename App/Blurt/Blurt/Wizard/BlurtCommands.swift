@@ -1,11 +1,14 @@
 import SwiftUI
 
-/// App-menu commands. The standard ⌘, "Settings…" item is supplied by the
-/// `Settings` scene itself (see `BlurtApp`).
+/// App-menu commands.
 struct BlurtCommands: Commands {
   var appDelegate: AppDelegate
 
   var body: some Commands {
+    CommandGroup(replacing: .appSettings) {
+      Button("Настройки…") { appDelegate.openSettings() }
+        .keyboardShortcut(",", modifiers: .command)
+    }
     // "Check for Updates…" sits just below "About Blurt" in the app menu — the
     // conventional macOS spot, and the placement Sparkle's own SwiftUI guidance
     // uses (`CommandGroup(after: .appInfo)`). It runs the same check as the

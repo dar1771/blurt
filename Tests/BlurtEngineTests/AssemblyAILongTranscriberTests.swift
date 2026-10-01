@@ -30,6 +30,7 @@ struct AssemblyAILongTranscriberTests {
     let sent = requests.withLock { $0 }
     #expect(sent.map(\.httpMethod) == ["POST", "POST", "GET"])
     #expect(sent[0].httpBody == Data([1, 2, 3, 4]))
+    #expect(sent.map(\.timeoutInterval) == [600, 90, 90])
     #expect(sent.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "test-key" })
     let body = try #require(sent[1].httpBody)
     let payload = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
