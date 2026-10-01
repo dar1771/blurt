@@ -104,7 +104,7 @@ final class DictationPipelineUITests: BlurtUITestCase {
 
     harness.buttons[UITestIdentifiers.startButton].click()
     waitForLabel(status, equals: UITestIdentifiers.statusRecording, "Start should drive status to recording")
-    waitForLabel(pill, equals: "Recording.", "Overlay pill should show the recording state")
+    waitForLabel(pill, equals: "Идёт запись.", "Overlay pill should show the recording state")
 
     harness.buttons[UITestIdentifiers.stopButton].click()
     waitForLabel(status, equals: UITestIdentifiers.statusIdle, "Pipeline should return to idle after pasting")
