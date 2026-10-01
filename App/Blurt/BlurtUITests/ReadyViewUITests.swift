@@ -18,16 +18,16 @@ final class ReadyViewUITests: BlurtUITestCase {
     // over the hold line. One static text apiece — the key name is bolded
     // inline, not a separate element.
     XCTAssertTrue(
-      app.staticTexts["Tap Right Command (⌘) to start and stop."].waitForExistence(timeout: 10),
+      app.staticTexts["Нажмите правую Command (⌘) для записи."].waitForExistence(timeout: 10),
       "Ready screen should state the dictation shortcut")
-    XCTAssertTrue(app.staticTexts["Or hold it to talk, then release."].exists)
+    XCTAssertTrue(app.staticTexts["Ещё раз — стоп. Или удерживайте во время речи."].exists)
 
     // The style row is always present — with no custom styles yet its pop-up
-    // holds just Default and the "Edit Styles…" item that leads to Settings,
+    // holds just Default and the "Изменить стили…" item that leads to Settings,
     // where styles are made. The caption above the card and the row's own
     // "Output Styles:" label both name it.
     XCTAssertTrue(
-      app.staticTexts["How Blurt cleans up your raw transcript"].exists,
+      app.staticTexts["Как VibeDictate обрабатывает диктовку"].exists,
       "Ready screen should caption the style row")
     let main = app.windows[UITestIdentifiers.mainWindowTitle]
     let styles = main.popUpButtons[UITestIdentifiers.styleProfilePickerFromMain]
@@ -35,24 +35,24 @@ final class ReadyViewUITests: BlurtUITestCase {
     // The value is `StyleProfileStore.defaultStyleName`, spelled out because
     // this bundle can't import the engine.
     XCTAssertEqual(
-      styles.value as? String, "Default",
+      styles.value as? String, "По умолчанию",
       "The style pop-up should start on the Default style")
 
     // The Recent section, empty on a fresh launch, shows its header and the
     // placeholder that fills the reserved list area.
-    XCTAssertTrue(app.staticTexts["Recent"].exists, "Ready screen should have a Recent section")
+    XCTAssertTrue(app.staticTexts["Недавние записи"].exists, "Ready screen should have a Recent section")
     XCTAssertTrue(
-      app.staticTexts["Your recent blurts will appear here"].exists,
+      app.staticTexts["Здесь появятся ваши диктовки"].exists,
       "An empty Recent list should show its placeholder")
 
     // The Settings button at the window's foot — the main window's own route
     // to the Settings scene, alongside ⌘, and the menu-bar item.
     XCTAssertTrue(
-      main.buttons["Settings"].exists,
+      main.buttons["Настройки"].exists,
       "Ready screen should offer its Settings button")
   }
 
-  /// The style pop-up's menu: the styles, then "Edit Styles…" past a divider.
+  /// The style pop-up's menu: the styles, then "Изменить стили…" past a divider.
   /// The separator itself isn't an accessibility element, so what's asserted is
   /// that both kinds of item share the one menu. The menu is dismissed rather
   /// than clicked through — choosing that item opens Settings, which is
@@ -67,11 +67,11 @@ final class ReadyViewUITests: BlurtUITestCase {
     // Matched by prefix, not equality: the item's title carries trailing
     // non-breaking spaces, which is what sets the pop-up's width (see
     // `StyleRow.Bar`).
-    let editPredicate = NSPredicate(format: "title BEGINSWITH %@", "Edit Styles…")
+    let editPredicate = NSPredicate(format: "title BEGINSWITH %@", "Изменить стили…")
     XCTAssertTrue(
       app.menuItems.matching(editPredicate).firstMatch.waitForExistence(timeout: 5),
       "The style menu should offer the route to where styles are edited")
-    XCTAssertTrue(app.menuItems["Default"].exists, "The style menu should list the Default style")
+    XCTAssertTrue(app.menuItems["По умолчанию"].exists, "The style menu should list the Default style")
 
     app.typeKey(.escape, modifierFlags: [])
   }
@@ -81,7 +81,7 @@ final class ReadyViewUITests: BlurtUITestCase {
 
     // The Recent list starts empty.
     XCTAssertTrue(
-      main.staticTexts["Your recent blurts will appear here"].waitForExistence(timeout: 10),
+      main.staticTexts["Здесь появятся ваши диктовки"].waitForExistence(timeout: 10),
       "Recent list should start empty")
 
     driveDictation(via: harness)
@@ -92,7 +92,7 @@ final class ReadyViewUITests: BlurtUITestCase {
       row.waitForExistence(timeout: 10),
       "A completed dictation should appear in the ready screen's Recent list")
     XCTAssertFalse(
-      main.staticTexts["Your recent blurts will appear here"].exists,
+      main.staticTexts["Здесь появятся ваши диктовки"].exists,
       "The empty-list placeholder should be gone once a dictation is recorded")
   }
 
@@ -113,11 +113,11 @@ final class ReadyViewUITests: BlurtUITestCase {
     pasteboard.clearContents()
     pasteboard.setString("sentinel-before-copy", forType: .string)
 
-    // Right-click the row to reveal its "Copy" contextual menu item and invoke
+    // Right-click the row to reveal its "Копировать" contextual menu item and invoke
     // it. Scope to the popup menu (`app.menus`) so it doesn't collide with the
-    // always-present Edit-menu "Copy" in the main menu bar.
+    // always-present Edit-menu "Копировать" in the main menu bar.
     row.rightClick()
-    let copyItem = app.menus.menuItems["Copy"].firstMatch
+    let copyItem = app.menus.menuItems["Копировать"].firstMatch
     XCTAssertTrue(copyItem.waitForExistence(timeout: 5), "Recent row should offer a Copy action")
     copyItem.click()
 

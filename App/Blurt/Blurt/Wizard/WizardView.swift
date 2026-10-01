@@ -48,10 +48,10 @@ struct WizardView: View {
       OnboardingBrandMark()
 
       VStack(alignment: .leading, spacing: 4) {
-        Text("Set up Blurt")
+        Text("Настройка VibeDictate")
           .font(.title2)
           .fontWeight(.bold)
-        Text("Add your API key, then allow Microphone and Accessibility access.")
+        Text("Добавьте ключ API и разрешите доступ к микрофону и управлению компьютером.")
           .font(.body)
           .foregroundStyle(.secondary)
       }

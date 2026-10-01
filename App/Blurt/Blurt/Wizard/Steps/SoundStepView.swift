@@ -29,7 +29,7 @@ struct SoundStepView: View {
   var body: some View {
     Section {
       PickerSettingRow(
-        title: "Cue sound", systemImage: "speaker.wave.2",
+        title: "Звуковой сигнал", systemImage: "speaker.wave.2",
         accessibilityID: UITestIdentifiers.soundPicker, selection: selection
       ) {
         Text(SoundPack.none.label).tag(SoundPack.none)
@@ -42,9 +42,9 @@ struct SoundStepView: View {
         }
       }
     } header: {
-      Text("Sound")
+      Text("Звук")
     } footer: {
-      Text("Set to None to silence start and stop cues.")
+      Text("Выберите «Без звука», чтобы отключить сигналы начала и окончания записи.")
     }
   }
 }

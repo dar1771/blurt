@@ -36,15 +36,15 @@ public enum OverlayUIState: Equatable, Sendable {
   /// notices below, which would otherwise restate the same strings.
   public var accessibilityLabel: String {
     switch self {
-    case .idle: "Blurt."
-    case .connecting: "Connecting to the microphone."
-    case .recording: "Recording."
-    case .longMode: "Long recording mode. Recording continues locally."
-    case .processing: "Processing."
-    case .normalizing: "Normalizing transcript."
+    case .idle: "VibeDictate."
+    case .connecting: "Подключение к микрофону."
+    case .recording: "Идёт запись."
+    case .longMode: "Длинная запись. Аудио сохраняется на Mac."
+    case .processing: "Обработка записи."
+    case .normalizing: "Обработка текста."
     case .error(let message): message
-    case .pasted: "Your dictation was pasted."
-    case .noTarget: "No text field focused. Your dictation was copied to the clipboard."
+    case .pasted: "Текст вставлен."
+    case .noTarget: "Поле ввода не выбрано. Текст скопирован в буфер обмена."
     }
   }
 
@@ -92,7 +92,7 @@ extension PipelinePhase {
     // classification is `PipelinePhase.setupBlocker`, so this and the shell's
     // navigation can't disagree about which failures are setup states.
     case .failed(let error) where error.isSetupBlocker: .idle
-    case .failed(let error): .error(message: error.errorDescription ?? "Dictation failed.")
+    case .failed(let error): .error(message: error.errorDescription ?? "Не удалось распознать речь.")
     case .pasted: .pasted
     case .noTarget: .noTarget
     }

@@ -18,8 +18,8 @@ public enum MenuBarStatus: Equatable, Sendable {
   /// live in one unit-tested place, mirroring `OverlayUIState.accessibilityLabel`.
   public var symbolName: String {
     switch self {
-    case .idle: "b.circle"
-    case .recording: "b.circle.fill"
+    case .idle: "v.circle"
+    case .recording: "v.circle.fill"
     case .transcribing: "waveform"
     }
   }
@@ -27,9 +27,9 @@ public enum MenuBarStatus: Equatable, Sendable {
   /// Spoken by VoiceOver, since the menu bar glyph is otherwise unlabelled.
   public var accessibilityLabel: String {
     switch self {
-    case .idle: "Blurt — idle"
-    case .recording: "Blurt — recording"
-    case .transcribing: "Blurt — transcribing"
+    case .idle: "VibeDictate — ожидание"
+    case .recording: "VibeDictate — запись"
+    case .transcribing: "VibeDictate — распознавание"
     }
   }
 }

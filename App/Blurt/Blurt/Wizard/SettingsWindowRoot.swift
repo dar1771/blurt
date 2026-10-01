@@ -128,15 +128,15 @@ private struct TranscriptionSection: View {
   var body: some View {
     Section {
       Toggle(isOn: $enhancedTranscripts) {
-        Label("Enhanced transcripts", systemImage: "wand.and.stars")
+        Label("Улучшать текст", systemImage: "wand.and.stars")
       }
       .accessibilityIdentifier(UITestIdentifiers.enhancedTranscriptsToggle)
     } header: {
-      Text("Transcription")
+      Text("Распознавание")
     } footer: {
       Text(
-        "Polishes each dictation before pasting — removing filler words and fixing punctuation. "
-          + "Turn off to paste your words exactly as spoken.")
+        "Убирает слова-паразиты и исправляет пунктуацию перед вставкой. "
+          + "Выключите, чтобы вставлять текст без обработки.")
     }
   }
 }
@@ -177,25 +177,25 @@ private struct StyleProfilesSection: View {
       // profile's own stable id, so a rename doesn't rebuild the row.
       ForEach(Array(profiles.enumerated()), id: \.element.id) { index, profile in
         SettingRow(title: profile.name, systemImage: "textformat") {
-          Button("Edit…") { editing = profile }
+          Button("Изменить…") { editing = profile }
             .accessibilityIdentifier(UITestIdentifiers.styleProfileEdit(index))
         }
       }
       // Ellipsis for the same reason as the API-key row's "Connect…": the
       // action needs more input before it completes.
-      Button("Add Style…") { editing = StyleProfile(name: "", instructions: "") }
+      Button("Добавить стиль…") { editing = StyleProfile(name: "", instructions: "") }
         .disabled(profiles.count >= StyleProfileStore.profileLimit)
         .accessibilityIdentifier(UITestIdentifiers.styleProfileAdd)
     } header: {
-      Text("Custom Styles")
+      Text("Стили текста")
     } footer: {
       // The caveat *replaces* the help sentence rather than joining it: with
       // enhanced transcripts off the rewrite a style shapes is discarded
       // unread, so describing the limit is the less useful half.
       Text(
         enhancedTranscripts
-          ? "Up to \(StyleProfileStore.profileLimit) styles."
-          : "Style preferences need enhanced transcripts turned on.")
+          ? "Можно добавить до \(StyleProfileStore.profileLimit) стилей."
+          : "Для стилей включите улучшение текста.")
     }
     .disabled(!enhancedTranscripts)
     .sheet(item: $editing) { profile in
@@ -244,9 +244,9 @@ private struct StyleProfileEditorSheet: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 6) {
-        Text("Custom Style")
+        Text("Стиль текста")
           .font(.headline)
-        Text("Applied while polishing each dictation — casing, tone, emoji use.")
+        Text("Задайте регистр, тон и использование эмодзи при обработке текста.")
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -267,13 +267,13 @@ private struct StyleProfileEditorSheet: View {
   /// is which" has to survive being filled in.
   private var nameField: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text("Name")
+      Text("Название")
         .font(.subheadline.weight(.semibold))
-      TextField("", text: $name, prompt: Text("e.g. Casual"))
+      TextField("", text: $name, prompt: Text("Например: Неформальный"))
         .lineLimit(1)
         .disableAutocorrection(true)
         .focused($nameFocused)
-        .accessibilityLabel("Style name")
+        .accessibilityLabel("Название стиля")
         .accessibilityIdentifier(UITestIdentifiers.styleProfileName)
         // Capped because the name labels a segment of the main window's
         // switcher; counted in characters, which is what that width bounds.
@@ -289,16 +289,16 @@ private struct StyleProfileEditorSheet: View {
   /// the field it measures.
   private var instructionsField: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text("Instructions")
+      Text("Инструкции")
         .font(.subheadline.weight(.semibold))
       // A vertical-axis TextField grows with its content up to `lineLimit`, so
       // there's no faked placeholder over a TextEditor.
       TextField(
         text: $instructions,
-        prompt: Text("e.g. add fitting emojis sparingly, or always write in lowercase"),
+        prompt: Text("Например: иногда добавляй подходящие эмодзи"),
         axis: .vertical
       ) {
-        Text("Instructions")
+        Text("Инструкции")
       }
       .labelsHidden()
       .lineLimit(2...6)
@@ -321,21 +321,21 @@ private struct StyleProfileEditorSheet: View {
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .trailing)
         .accessibilityLabel(
-          "\(instructions.utf8.count) of \(StyleProfileStore.characterLimit) characters used")
+          "Использовано \(instructions.utf8.count) из \(StyleProfileStore.characterLimit) символов")
     }
   }
 
   private var buttonRow: some View {
     HStack(spacing: 12) {
       if isExisting {
-        Button("Delete", role: .destructive, action: delete)
+        Button("Удалить", role: .destructive, action: delete)
           .accessibilityIdentifier(UITestIdentifiers.styleProfileDelete)
       }
       Spacer(minLength: 12)
-      Button("Cancel") { dismiss() }
+      Button("Отмена") { dismiss() }
         .keyboardShortcut(.cancelAction)
         .accessibilityIdentifier(UITestIdentifiers.styleProfileCancel)
-      Button("Save", action: save)
+      Button("Сохранить", action: save)
         .glassButtonStyleCompat(prominent: true)
         .keyboardShortcut(.defaultAction)
         .disabled(!canSave)

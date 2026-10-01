@@ -117,7 +117,7 @@ only one of stt_prompt or prompt; they are the same field`, before the audio is
   `universal-3-5-pro` ignores it; it was deliberately dropped, and there is no
   prompt field to put it in now.
 - **VibeDictate is Russian-first with English code-switching.** The short route
-  sends the documented `config.language_codes: ["ru", "en"]`; the long
+  sends the documented `config.language_codes: ["ru"]`; the long
   Universal-2 route sends its documented `language_code: "ru"`.
 - **Injection is always a clipboard paste** (save → write → ⌘V → settle →
   restore), degrading to "left it on the clipboard" when the target is lost. No

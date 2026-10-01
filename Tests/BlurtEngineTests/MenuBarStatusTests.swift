@@ -54,15 +54,15 @@ struct MenuBarStatusPresentationTests {
   @Test func symbolNames() {
     // A stylized "B" at rest, filling in while recording — the same idle→fill
     // idiom the mic glyphs used — and the waveform while transcribing.
-    #expect(MenuBarStatus.idle.symbolName == "b.circle")
-    #expect(MenuBarStatus.recording.symbolName == "b.circle.fill")
+    #expect(MenuBarStatus.idle.symbolName == "v.circle")
+    #expect(MenuBarStatus.recording.symbolName == "v.circle.fill")
     #expect(MenuBarStatus.transcribing.symbolName == "waveform")
   }
 
   @Test func accessibilityLabels() {
-    #expect(MenuBarStatus.idle.accessibilityLabel == "Blurt — idle")
-    #expect(MenuBarStatus.recording.accessibilityLabel == "Blurt — recording")
-    #expect(MenuBarStatus.transcribing.accessibilityLabel == "Blurt — transcribing")
+    #expect(MenuBarStatus.idle.accessibilityLabel == "VibeDictate — ожидание")
+    #expect(MenuBarStatus.recording.accessibilityLabel == "VibeDictate — запись")
+    #expect(MenuBarStatus.transcribing.accessibilityLabel == "VibeDictate — распознавание")
   }
 }
 

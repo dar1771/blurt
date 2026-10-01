@@ -35,7 +35,7 @@ struct AssemblyAILongTranscriberTests {
     let payload = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
     #expect(payload["speech_models"] as? [String] == ["universal-2"])
     #expect(payload["language_code"] as? String == "ru")
-    #expect(payload["word_boost"] as? [String] == ["Swift"])
+    #expect(payload["word_boost"] == nil)
   }
 
   @Test("missing key fails before opening audio")

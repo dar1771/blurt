@@ -1,6 +1,6 @@
 # Building on BlurtEngine
 
-BlurtEngine is the Swift package that powers [Blurt](../../README.md)'s dictation pipeline: capture speech from the microphone, route short recordings through the streaming AssemblyAI dictation API and long recordings through Universal-2, optionally normalize the result with OpenRouter, and paste the polished text into the focused app. This guide is for developers embedding the engine in their own macOS app or extending it inside this repository. For repo-wide conventions and agent workflow, see [AGENTS.md](../../AGENTS.md).
+BlurtEngine is the Swift package that powers [VibeDictate](../../README.md)'s dictation pipeline: capture speech from the microphone, transcribe Russian recordings with AssemblyAI Universal-2, optionally normalize the result with OpenRouter, and paste the polished text into the focused app. The engine also retains the short dictation API route for other clients. This guide is for developers embedding the engine in their own macOS app or extending it inside this repository. For repo-wide conventions and agent workflow, see [AGENTS.md](../../AGENTS.md).
 
 ## What you get
 

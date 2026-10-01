@@ -42,7 +42,7 @@ struct RecentDictationsSection: View {
       // identically. This was `.subheadline.weight(.semibold)`, which read a
       // weight and a shade heavier than its sibling and made the two captions
       // look like different levels of heading.
-      Text("Recent")
+      Text("Недавние записи")
         .font(.callout)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,7 +70,7 @@ struct RecentDictationsSection: View {
   @ViewBuilder
   private var listBody: some View {
     if entries.isEmpty {
-      Text("Your recent blurts will appear here")
+      Text("Здесь появятся ваши диктовки")
         .font(.callout)
         .foregroundStyle(.secondary)
         .multilineTextAlignment(.center)
@@ -155,14 +155,14 @@ private struct RecentDictationRow: View {
     .contentShape(Rectangle())
     .onHover { isHovered = $0 }
     .contextMenu {
-      Button("Copy") { copyTranscript() }
+      Button("Копировать") { copyTranscript() }
     }
     // One VoiceOver element per row; the explicit label controls the phrasing,
     // so ignore the children rather than merge. Copy is re-exposed as a custom
     // action since the hover button is ignored with the rest of the children.
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(voiceOverLabel)
-    .accessibilityAction(named: "Copy") { copyTranscript() }
+    .accessibilityAction(named: "Копировать") { copyTranscript() }
     // Reverts the "Copied" confirmation after a beat. The cancelled-sleep guard
     // keeps a superseded timer from clearing the newer copy's confirmation.
     .task(id: copyCount) {
@@ -190,7 +190,7 @@ private struct RecentDictationRow: View {
         // separate items at this size; pull the glyph in tight.
         HStack(spacing: 3) {
           Image(systemName: "doc.on.doc")
-          Text("Copy")
+          Text("Копировать")
         }
       }
       .buttonStyle(RecentCopyButtonStyle())
@@ -199,7 +199,7 @@ private struct RecentDictationRow: View {
       // Opacity-0 views still hit-test; only take clicks while visible (this
       // gates pointer input without breaking keyboard focus/activation).
       .allowsHitTesting(trailingSlot == .copyButton)
-      Label("Copied", systemImage: "checkmark")
+      Label("Скопировано", systemImage: "checkmark")
         .opacity(trailingSlot == .copiedConfirmation ? 1 : 0)
         // Let clicks fall through rather than swallowing them while the
         // confirmation sits above the (hidden) copy button.
@@ -246,13 +246,13 @@ private struct RecentDictationRow: View {
 
     // The invisible pasteboard write gets audible + visible confirmation:
     if #available(macOS 14, *) {
-      AccessibilityNotification.Announcement("Copied").post()
+      AccessibilityNotification.Announcement("Скопировано").post()
     } else {
       if let app = NSApp {
         NSAccessibility.post(
           element: app,
           notification: .announcementRequested,
-          userInfo: [.announcement: "Copied", .priority: 50]
+          userInfo: [.announcement: "Скопировано", .priority: 50]
         )
       }
     }

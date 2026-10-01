@@ -1,17 +1,22 @@
 import Foundation
 
 public struct OpenRouterTextNormalizer: TextNormalizer {
-  public static let defaultModel = "google/gemini-3.5-flash-lite"
+  public static let defaultModel = "google/gemini-3.8-flash"
+  public static let fallbackModel = "openai/gpt-4.1-mini"
   public static let instruction = """
     Ты — консервативный редактор русской голосовой диктовки.
 
     Исправь форму текста, но не переписывай мысли автора. Верни только готовый текст без
     комментариев, Markdown-обрамления и объяснений. Полностью сохраняй смысл, факты, намерение,
     последовательность мыслей и тон. Не резюмируй, не добавляй и не удаляй содержательные части.
-    Исправляй пунктуацию, вопросительные знаки и естественные абзацы. Удаляй только пустые звуки,
-    явные слова-паразиты без смысла и очевидный ложный старт, который говорящий сразу исправил.
-    Не цензурируй. Русский текст оставляй русским. Названия технологий, моделей, продуктов, API,
-    библиотек и coding-термины пиши стандартной латиницей, используя переданный technical vocabulary.
+    Исправляй орфографию и грамматику, начинай предложения и имена собственные с заглавной буквы.
+    Расставляй точки, запятые, вопросительные знаки и тире; дели текст на абзацы только при явной
+    смене мысли. Удаляй только пустые звуки, слова-паразиты без смысла и очевидный ложный старт,
+    который говорящий сразу исправил. Не цензурируй. Русский текст оставляй русским.
+    Названия сервисов, приложений, брендов, технологий и английские термины пиши в оригинальной
+    латинице, когда они однозначно распознаются по контексту или technical vocabulary. Если
+    транскрипция исказила созвучное название из словаря, исправь его; не угадывай неоднозначные
+    слова. Не пиши весь текст строчными или каждое слово с заглавной буквы.
     Не превращай обычную диктовку в списки, заголовки или структурированный документ. Если текст уже
     хороший, внеси минимальные изменения.
     """
@@ -37,6 +42,20 @@ public struct OpenRouterTextNormalizer: TextNormalizer {
     guard let key = apiKeyProvider()?.trimmedNonEmpty() else {
       throw OpenRouterError.missingAPIKey
     }
+    let model = modelProvider()
+    do {
+      return try await requestNormalization(
+        model: model, key: key, rawTranscript: rawTranscript, vocabulary: vocabulary)
+    } catch OpenRouterError.httpStatus(403) where model.hasPrefix("google/") {
+      return try await requestNormalization(
+        model: Self.fallbackModel, key: key,
+        rawTranscript: rawTranscript, vocabulary: vocabulary)
+    }
+  }
+
+  private func requestNormalization(
+    model: String, key: String, rawTranscript: String, vocabulary: [String]
+  ) async throws -> String {
     var request = URLRequest(url: endpoint)
     request.httpMethod = "POST"
     request.timeoutInterval = 30
@@ -44,7 +63,7 @@ public struct OpenRouterTextNormalizer: TextNormalizer {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.httpBody = try JSONEncoder().encode(
       Request(
-        model: modelProvider(), temperature: 0,
+        model: model, temperature: 0,
         messages: [
           Message(role: "system", content: Self.instruction),
           Message(

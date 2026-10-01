@@ -9,13 +9,13 @@ struct UpdateSection: View {
       SettingRow(title: model.versionLabel, systemImage: "arrow.triangle.2.circlepath") {
         HStack(spacing: 8) {
           if model.isChecking { ProgressView().controlSize(.small) }
-          Button("Check for Updates") { model.checkForUpdates() }
+          Button("Проверить обновления") { model.checkForUpdates() }
             .disabled(model.isChecking)
             .accessibilityIdentifier(UITestIdentifiers.updateCheck)
         }
       }
     } header: {
-      Text("Updates")
+      Text("Обновления")
     }
   }
 }

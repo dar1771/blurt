@@ -5,6 +5,24 @@ import Testing
 
 @Suite("STTRouter")
 struct STTRouterTests {
+  @Test("Russian-first route sends a short recording to Universal-2 without calling dictation")
+  func accurateRussianRouteUsesUniversal2() async throws {
+    let short = ShortClient()
+    let long = LongClient(raw: "Однажды я вспомнил")
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    let session = STTRouter(
+      shortClient: short, longClient: long, preferAccurateRussian: true
+    ).start(frames: frames, writer: RoutingAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.yield(Data([1]))
+    feed.finish()
+    let result = try await session.stop(
+      durationSeconds: 5, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
+    #expect(result.mode == .long)
+    #expect(result.raw == "Однажды я вспомнил")
+    #expect(short.calls == 0)
+    #expect(long.calls == 1)
+  }
+
   @Test("recordingBelowCutoffUsesDictationAPI")
   func recordingBelowCutoffUsesDictationAPI() async throws {
     let short = ShortClient()
@@ -58,6 +76,35 @@ struct STTRouterTests {
     }
     #expect(short.calls == 0 || short.cancelled)
   }
+
+  @Test("Latin phonetics in a Russian short dictation retry with Universal-2")
+  func latinShortTranscriptRetriesRussianModel() async throws {
+    let short = ShortClient(raw: "A nashi devstudionnie zimniu poru")
+    let long = LongClient(raw: "Однажды в студёную зимнюю пору")
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    let session = STTRouter(shortClient: short, longClient: long).start(
+      frames: frames, writer: RoutingAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.finish()
+    let result = try await session.stop(
+      durationSeconds: 5, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
+    #expect(result.mode == .long)
+    #expect(result.raw == "Однажды в студёную зимнюю пору")
+    #expect(long.calls == 1)
+  }
+
+  @Test("Cyrillic short dictation stays on the fast route")
+  func cyrillicShortTranscriptDoesNotRetry() async throws {
+    let short = ShortClient(raw: "Однажды в студёную зимнюю пору")
+    let long = LongClient()
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    let session = STTRouter(shortClient: short, longClient: long).start(
+      frames: frames, writer: RoutingAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.finish()
+    let result = try await session.stop(
+      durationSeconds: 5, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
+    #expect(result.mode == .short)
+    #expect(long.calls == 0)
+  }
 }
 
 private final class ShortClient: ShortSTTClient, Sendable {
@@ -67,7 +114,11 @@ private final class ShortClient: ShortSTTClient, Sendable {
   }
   private let state = Mutex(State())
   private let waitForCancellation: Bool
-  init(waitForCancellation: Bool = false) { self.waitForCancellation = waitForCancellation }
+  private let raw: String
+  init(waitForCancellation: Bool = false, raw: String = "short raw") {
+    self.waitForCancellation = waitForCancellation
+    self.raw = raw
+  }
   func transcribeShort(
     frames: AsyncStream<Data>, sampleRate: Int, context: TranscriptionContext?
   ) async throws -> ShortTranscription {
@@ -79,7 +130,7 @@ private final class ShortClient: ShortSTTClient, Sendable {
         throw error
       }
     }
-    return ShortTranscription(raw: "short raw", assemblyClean: "short clean")
+    return ShortTranscription(raw: raw, assemblyClean: "short clean")
   }
   var calls: Int { state.withLock { $0.calls } }
   var cancelled: Bool { state.withLock { $0.cancelled } }
@@ -91,9 +142,11 @@ private final class LongClient: LongSTTClient, Sendable {
     var vocabulary: [String] = []
   }
   private let state = Mutex(State())
+  private let raw: String
+  init(raw: String = "long raw") { self.raw = raw }
   func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
     state.withLock { $0 = State(calls: $0.calls + 1, vocabulary: vocabulary) }
-    return "long raw"
+    return raw
   }
   var calls: Int { state.withLock { $0.calls } }
   var vocabulary: [String] { state.withLock { $0.vocabulary } }

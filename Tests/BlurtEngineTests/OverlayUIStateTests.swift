@@ -55,7 +55,7 @@ struct OverlayUIStateTests {
     // the reason reaches the user (hover tooltip + VoiceOver) instead of an
     // unexplained red flash.
     let phase = PipelinePhase.failed(.audioCaptureFailed(underlying: MicCaptureError.noInputDevice))
-    #expect(phase.overlayState == .error(message: "Audio capture failed: No microphone is available."))
+    #expect(phase.overlayState == .error(message: "Ошибка записи звука: Микрофон недоступен."))
   }
 
   @Test func missingKeyFailureMapsToIdle() {
@@ -106,14 +106,14 @@ struct OverlayUIStateAccessibilityLabelTests {
   /// One row per fixed-wording state. `.error` is excluded: its label is a rule
   /// (echo the carried message verbatim), not a constant, so it keeps its own test.
   static let labels: [(state: OverlayUIState, spoken: String)] = [
-    (.idle, "Blurt."),
-    (.connecting, "Connecting to the microphone."),
-    (.recording, "Recording."),
-    (.longMode, "Long recording mode. Recording continues locally."),
-    (.processing, "Processing."),
-    (.normalizing, "Normalizing transcript."),
-    (.pasted, "Your dictation was pasted."),
-    (.noTarget, "No text field focused. Your dictation was copied to the clipboard."),
+    (.idle, "VibeDictate."),
+    (.connecting, "Подключение к микрофону."),
+    (.recording, "Идёт запись."),
+    (.longMode, "Длинная запись. Аудио сохраняется на Mac."),
+    (.processing, "Обработка записи."),
+    (.normalizing, "Обработка текста."),
+    (.pasted, "Текст вставлен."),
+    (.noTarget, "Поле ввода не выбрано. Текст скопирован в буфер обмена."),
   ]
 
   @Test("each state speaks its fixed label", arguments: labels)

@@ -64,16 +64,17 @@ struct MainWindowRoot: View {
     if let controller = appDelegate.wizardController, let coordinator = appDelegate.coordinator {
       Group {
         if controller.isReady {
-          ReadyView(
-            coordinator: coordinator,
-            openSettings: { appDelegate.openSettings() },
-            editStyles: {
-              // "Edit Styles…" deep-links: flag the Advanced pane (where
-              // styles are edited) before opening, so the user lands on the
-              // Styles section instead of General — see `SettingsWindowRoot`.
-              appDelegate.settingsOpensOnAdvanced = true
-              appDelegate.openSettings()
-            })
+          if #available(macOS 14, *) {
+            ReadyViewWithSettings(appDelegate: appDelegate, coordinator: coordinator)
+          } else {
+            ReadyView(
+              coordinator: coordinator,
+              openSettings: { appDelegate.openSettings() },
+              editStyles: {
+                appDelegate.settingsOpensOnAdvanced = true
+                appDelegate.openSettings()
+              })
+          }
         } else {
           WizardView(controller: controller, coordinator: coordinator)
         }
@@ -117,5 +118,22 @@ struct MainWindowRoot: View {
       // before the run loop presents any scene, so this branch shouldn't show.
       Color.clear.frame(width: MainWindow.contentWidth, height: 320)
     }
+  }
+}
+
+@available(macOS 14, *)
+private struct ReadyViewWithSettings: View {
+  @ObservedObject var appDelegate: AppDelegate
+  @ObservedObject var coordinator: AppCoordinator
+  @Environment(\.openSettings) private var openSettings
+
+  var body: some View {
+    ReadyView(
+      coordinator: coordinator,
+      openSettings: { openSettings() },
+      editStyles: {
+        appDelegate.settingsOpensOnAdvanced = true
+        openSettings()
+      })
   }
 }

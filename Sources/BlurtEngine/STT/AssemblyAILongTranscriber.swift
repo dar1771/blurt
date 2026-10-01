@@ -18,7 +18,7 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
     self.pollDelay = pollDelay
   }
 
-  public func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
+  public func transcribe(audioFileURL: URL, vocabulary _: [String]) async throws -> String {
     guard let key = apiKeyProvider()?.trimmedNonEmpty() else {
       throw BlurtError.apiKeyMissing
     }
@@ -30,7 +30,7 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
       path: "v2/transcript", method: "POST", key: key,
       value: TranscriptRequest(
         audioURL: upload.uploadURL, speechModels: ["universal-2"],
-        languageCode: "ru", wordBoost: VocabularyStore.deduplicated(vocabulary)))
+        languageCode: "ru"))
     var current = submitted
     while current.status == "queued" || current.status == "processing" {
       try Task.checkCancellation()
@@ -74,12 +74,10 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
     let audioURL: String
     let speechModels: [String]
     let languageCode: String
-    let wordBoost: [String]
     enum CodingKeys: String, CodingKey {
       case audioURL = "audio_url"
       case speechModels = "speech_models"
       case languageCode = "language_code"
-      case wordBoost = "word_boost"
     }
   }
   struct UploadResponse: Decodable {
@@ -94,7 +92,15 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
   }
 }
 
-enum AssemblyAILongError: Error, Sendable, Equatable {
+enum AssemblyAILongError: Error, LocalizedError, Sendable, Equatable {
   case httpStatus(Int)
   case transcriptionFailed(String?)
+
+  var errorDescription: String? {
+    switch self {
+    case .httpStatus(let status): "Ошибка AssemblyAI: код \(status)."
+    case .transcriptionFailed(let message):
+      message.map { "Не удалось распознать запись: \($0)" } ?? "Не удалось распознать запись."
+    }
+  }
 }

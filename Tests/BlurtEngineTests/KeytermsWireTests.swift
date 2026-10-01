@@ -71,7 +71,7 @@ extension HTTPClientTests {
   func configCarriesRussianLanguageCodes() throws {
     let object = try steeringConfig()
     #expect(object.keys.contains("language_code") == false)
-    #expect(object["language_codes"] as? [String] == ["ru", "en"])
+    #expect(object["language_codes"] as? [String] == ["ru"])
     #expect(object.keys.sorted() == ["channels", "language_codes", "llm_instruction", "sample_rate"])
   }
 

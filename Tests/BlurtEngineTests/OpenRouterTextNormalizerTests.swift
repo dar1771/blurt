@@ -42,6 +42,26 @@ struct OpenRouterTextNormalizerTests {
     #expect(decoded.choices.first?.message.content == "Текст.")
   }
 
+  @Test("Google 403 retries normalization with a non-Google model")
+  func blockedGoogleUsesFallback() async throws {
+    let models = ValueBox([String]())
+    let transport = FakeHTTPTransport { request in
+      let model =
+        (try? JSONDecoder().decode(
+          OpenRouterTextNormalizer.Request.self, from: request.httpBody ?? Data()))?.model ?? ""
+      models.value.append(model)
+      if model.hasPrefix("google/") { return (403, Data()) }
+      return (200, Data(#"{"choices":[{"message":{"role":"assistant","content":"Claude Code и skills."}}]}"#.utf8))
+    }
+    let normalizer = OpenRouterTextNormalizer(
+      apiKeyProvider: { "key" }, modelProvider: { "google/gemini-3.8-flash" },
+      transport: transport)
+    let result = try await normalizer.normalize(
+      rawTranscript: "Cloud Code и Skills.", vocabulary: ["Claude Code", "skills"])
+    #expect(result == "Claude Code и skills.")
+    #expect(models.value == ["google/gemini-3.8-flash", "openai/gpt-4.1-mini"])
+  }
+
   @Test("missing key, rejected request and blank response all fail for fallback")
   func fallbackErrors() async {
     let missing = OpenRouterTextNormalizer(apiKeyProvider: { nil })

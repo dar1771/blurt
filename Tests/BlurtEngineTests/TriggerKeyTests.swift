@@ -15,7 +15,7 @@ struct TriggerKeyTests {
     for key in TriggerKey.allCases {
       #expect(!key.label.isEmpty)
     }
-    #expect(TriggerKey.rightCommand.label == "right ⌘")
+    #expect(TriggerKey.rightCommand.label == "правую ⌘")
   }
 
   @Test("every case has a spelled-out full name carrying its symbol")
@@ -23,8 +23,8 @@ struct TriggerKeyTests {
     // The readout bolds this inline, so it must name the key in words *and*
     // show the glyph the keyboard prints — either alone strands one kind of
     // reader.
-    #expect(TriggerKey.rightCommand.fullName == "Right Command (⌘)")
-    #expect(TriggerKey.rightOption.fullName == "Right Option (⌥)")
+    #expect(TriggerKey.rightCommand.fullName == "правую Command (⌘)")
+    #expect(TriggerKey.rightOption.fullName == "правую Option (⌥)")
   }
 
   @Test("raw value round-trips through keyCode")

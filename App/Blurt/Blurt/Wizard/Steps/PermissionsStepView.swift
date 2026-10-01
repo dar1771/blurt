@@ -42,7 +42,7 @@ struct PermissionsStepView: View {
   private var microphoneSection: some View {
     Section {
       permissionRow(
-        PermissionInfo(label: "Microphone", symbol: "mic.fill", buttonLabel: "Allow Microphone Access"),
+        PermissionInfo(label: "Микрофон", symbol: "mic.fill", buttonLabel: "Разрешить доступ к микрофону"),
         granted: controller.permissions.microphone,
         action: {
           Task {
@@ -60,14 +60,14 @@ struct PermissionsStepView: View {
         }
       )
     } header: {
-      Text("Permissions")
+      Text("Разрешения")
     } footer: {
       settingsFooter(
         opened: openedMicrophoneSettings,
         granted: controller.permissions.microphone,
-        waiting: "Waiting for you to turn on Blurt under Microphone…",
+        waiting: "Включите VibeDictate Dev в разделе «Микрофон»…",
         description:
-          "Blurt records only after you start dictating with \(triggerKey.label)."
+          "VibeDictate записывает звук только после нажатия \(triggerKey.label)."
       )
     }
   }
@@ -76,7 +76,7 @@ struct PermissionsStepView: View {
     Section {
       permissionRow(
         PermissionInfo(
-          label: "Accessibility", symbol: "accessibility", buttonLabel: "Open Accessibility Settings…"),
+          label: "Управление компьютером", symbol: "accessibility", buttonLabel: "Открыть настройки доступа…"),
         granted: controller.permissions.accessibility,
         action: {
           openedAccessibilitySettings = true
@@ -88,13 +88,13 @@ struct PermissionsStepView: View {
         settingsFooter(
           opened: openedAccessibilitySettings,
           granted: controller.permissions.accessibility,
-          waiting: "Waiting for you to turn on Blurt in the Accessibility list…",
-          description: "Blurt uses Accessibility to paste transcripts into the active app."
+          waiting: "Включите VibeDictate Dev в списке «Управление компьютером»…",
+          description: "VibeDictate использует этот доступ для вставки текста в активное приложение."
         )
         if accessibilityGrantLooksStuck && openedAccessibilitySettings
           && !controller.permissions.accessibility
         {
-          Text("If the Blurt toggle is already on, quit and reopen Blurt to refresh the grant.")
+          Text("Если переключатель уже включён, перезапустите VibeDictate Dev.")
         }
       }
       // Arms the stuck cue once the user heads to System Settings; if the grant
@@ -153,7 +153,7 @@ struct PermissionsStepView: View {
       if granted {
         HStack(spacing: 4) {
           Image(systemName: "checkmark.circle.fill").foregroundStyle(BlurtBrand.accent)
-          Text("Granted").foregroundStyle(.secondary)
+          Text("Разрешено").foregroundStyle(.secondary)
         }
       } else {
         // Prominent (brand-green fill), like the API key row's button: the one

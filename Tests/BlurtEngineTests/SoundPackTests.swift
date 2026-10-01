@@ -6,7 +6,7 @@ import Testing
 struct SoundPackTests {
   @Test("none plays nothing and is labelled None")
   func none() {
-    #expect(SoundPack.none.label == "None")
+    #expect(SoundPack.none.label == "Без звука")
     #expect(SoundPack.none.group == nil)
     #expect(SoundPack.none.startFileName == nil)
     #expect(SoundPack.none.stopFileName == nil)

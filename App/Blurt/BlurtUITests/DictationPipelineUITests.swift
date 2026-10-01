@@ -139,7 +139,7 @@ final class DictationPipelineUITests: BlurtUITestCase {
 
   /// A completed dictation lands in the app's recent-dictations list
   /// (`AppCoordinator.recentDictations`, its newest entry surfaced by the
-  /// harness's echo read-out) — the data path the ready window's "Recent"
+  /// harness's echo read-out) — the data path the ready window's "Недавние записи"
   /// section renders. The list persists (no revert), so we only assert it
   /// populates.
   func testTranscriptLandsInRecentDictations() {

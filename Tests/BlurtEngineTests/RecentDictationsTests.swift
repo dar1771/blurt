@@ -104,7 +104,7 @@ struct RecentDictationsTests {
   }
 }
 
-/// The Recent row's relative timestamp: "just now" for the first minute, then
+/// The Recent row's relative timestamp: "только что" for the first minute, then
 /// the system's full relative phrasing. `now` and `locale` are injected so the
 /// wording is deterministic.
 @Suite("RecentDictations.Entry.relativeLabel")
@@ -123,14 +123,14 @@ struct RecentDictationsRelativeLabelTests {
     // that just landed.
     let recorded = Date(timeIntervalSinceReferenceDate: 0)
     let label = entry(at: recorded).relativeLabel(now: recorded + 59, locale: english)
-    #expect(label == "just now")
+    #expect(label == "только что")
   }
 
   @Test("small clock skew (entry slightly in the future) still reads as \"just now\"")
   func futureSkewReadsJustNow() {
     let recorded = Date(timeIntervalSinceReferenceDate: 0)
     let label = entry(at: recorded).relativeLabel(now: recorded - 5, locale: english)
-    #expect(label == "just now")
+    #expect(label == "только что")
   }
 
   @Test("from one minute on, the full relative phrasing takes over")

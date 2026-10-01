@@ -53,7 +53,7 @@ struct HistoryWindowRoot: View {
             .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
         }
         if let clean = record.assemblyCleanTranscript {
-          GroupBox("AssemblyAI clean") {
+          GroupBox("Обработка AssemblyAI") {
             Text(clean).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
           }
         }

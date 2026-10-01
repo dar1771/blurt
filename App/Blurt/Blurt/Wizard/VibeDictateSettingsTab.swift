@@ -11,29 +11,29 @@ struct VibeDictateSettingsTab: View {
 
   var body: some View {
     Form {
-      Section("APIs") {
-        SecureField("OpenRouter API key", text: $openRouterKey)
-        TextField("OpenRouter model", text: $modelID)
-        Button("Save API Settings") { saveAPIs() }
+      Section("Сервисы") {
+        SecureField("Ключ API OpenRouter", text: $openRouterKey)
+        TextField("Модель OpenRouter", text: $modelID)
+        Button("Сохранить настройки API") { saveAPIs() }
       }
 
-      Section("Vocabulary") {
+      Section("Словарь") {
         TextEditor(text: $vocabulary)
           .font(.body.monospaced())
           .frame(minHeight: 90)
-        Button("Save Vocabulary") { saveVocabulary() }
+        Button("Сохранить словарь") { saveVocabulary() }
       }
 
-      Section("History") {
-        LabeledContent("Text retention", value: "30 days")
-        LabeledContent("Audio retention", value: "3 days")
-        Button("Clear History", role: .destructive) { history.clearHistory() }
+      Section("История") {
+        LabeledContent("Хранение текста", value: "30 дней")
+        LabeledContent("Хранение аудио", value: "3 дня")
+        Button("Очистить историю", role: .destructive) { history.clearHistory() }
       }
 
-      Section("Privacy") {
+      Section("Конфиденциальность") {
         Text(
-          "VibeDictate has no analytics or telemetry. Audio and transcripts stay local except "
-            + "when they are sent to your configured AssemblyAI and OpenRouter accounts."
+          "VibeDictate не собирает аналитику и телеметрию. Аудио и текст хранятся на этом Mac, "
+            + "кроме отправки в настроенные вами сервисы AssemblyAI и OpenRouter."
         )
         .foregroundStyle(.secondary)
       }
@@ -50,7 +50,7 @@ struct VibeDictateSettingsTab: View {
     let keySaved = OpenRouterAPIKeyStore.save(openRouterKey)
     OpenRouterModelStore().save(modelID)
     modelID = OpenRouterModelStore().modelID
-    saveMessage = keySaved ? "API settings saved." : "Could not save the OpenRouter key."
+    saveMessage = keySaved ? "Настройки API сохранены." : "Не удалось сохранить ключ OpenRouter."
   }
 
   private func saveVocabulary() {
@@ -60,6 +60,6 @@ struct VibeDictateSettingsTab: View {
       .map(String.init)
     VocabularyStore().save(terms)
     vocabulary = VocabularyStore().terms.joined(separator: ", ")
-    saveMessage = "Vocabulary saved."
+    saveMessage = "Словарь сохранён."
   }
 }

@@ -56,9 +56,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
   }
 
+  /// Compatibility route for macOS 13, where SwiftUI's openSettings action is unavailable.
   func openSettings() {
     activateApp()
-    _ = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    if !NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
+      _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+    }
   }
 
   /// Surfaces the main window *and* makes the app frontmost. Shared by the menu

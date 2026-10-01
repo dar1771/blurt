@@ -368,12 +368,12 @@ enum AssemblyAIError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .http(let status, let message):
-      if let message { return "AssemblyAI error \(status): \(message)" }
-      return "AssemblyAI error \(status)"
+      if let message { return "Ошибка AssemblyAI \(status): \(message)" }
+      return "Ошибка AssemblyAI \(status)"
     case .malformedResponse:
-      return "Unexpected response from AssemblyAI."
+      return "Неожиданный ответ AssemblyAI."
     case .audioTooShort:
-      return "That recording was too short to transcribe."
+      return "Запись слишком короткая для распознавания."
     }
   }
 }

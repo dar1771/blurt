@@ -13,12 +13,12 @@ struct BlurtCommands: Commands {
     // The ellipsis marks that it goes off and does work (and may present a
     // dialog).
     CommandGroup(after: .appInfo) {
-      Button("Check for Updates…") { appDelegate.updateCheckModel.checkForUpdates() }
+      Button("Проверить обновления…") { appDelegate.updateCheckModel.checkForUpdates() }
     }
-    CommandMenu("Dictation") {
-      Button("Insert Last Dictation") { appDelegate.historyModel.insertLast() }
+    CommandMenu("Диктовка") {
+      Button("Вставить последнюю запись") { appDelegate.historyModel.insertLast() }
         .keyboardShortcut("v", modifiers: [.option, .command])
-      Button("Open History") { appDelegate.openHistory() }
+      Button("Открыть историю") { appDelegate.openHistory() }
         .keyboardShortcut("h", modifiers: [.option, .command])
     }
     // Blurt ships no help book, so SwiftUI's default Help menu would show a

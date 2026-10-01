@@ -14,7 +14,7 @@ struct DictationComponents {
   let vibePipeline: VibeDictationPipeline?
   let focusContextProvider: (@Sendable () -> TranscriptionContext?)?
 
-  /// The real pipeline: a fresh `MicCapture`, the AssemblyAI dictation transcriber,
+  /// The real pipeline: a fresh `MicCapture`, Russian Universal-2 transcription,
   /// and the clipboard-paste injector. This is what `AppCoordinator` builds, so
   /// production behavior is unchanged by the test seam existing.
   static func production() -> DictationComponents {
@@ -23,7 +23,8 @@ struct DictationComponents {
       mic: MicCapture(), transcriber: short, injector: KeyInjector(),
       vibePipeline: VibeDictationPipeline(
         router: STTRouter(
-          shortClient: short, longClient: AssemblyAILongTranscriber()),
+          shortClient: short, longClient: AssemblyAILongTranscriber(),
+          preferAccurateRussian: true),
         normalizer: OpenRouterTextNormalizer(
           apiKeyProvider: { OpenRouterAPIKeyStore.current }),
         normalizationModel: { OpenRouterModelStore().modelID }),

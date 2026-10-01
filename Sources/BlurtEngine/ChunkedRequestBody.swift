@@ -212,9 +212,9 @@ enum ChunkedUploadError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .bodyStreamClosed:
-      return "The upload connection closed before the recording finished sending."
+      return "Соединение закрылось до окончания отправки записи."
     case .bodyStreamUnavailable:
-      return "Couldn't open an upload stream for the recording."
+      return "Не удалось начать отправку записи."
     }
   }
 }

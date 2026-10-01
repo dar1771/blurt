@@ -21,7 +21,7 @@ enum DictationPipelineError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .uploadNeverStarted:
-      return "The recording wasn't uploaded."
+      return "Не удалось отправить запись."
     }
   }
 }

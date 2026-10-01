@@ -67,9 +67,9 @@ public struct UpdateAlertContent: Equatable, Sendable {
   /// "Check for Updates" visibly confirms it ran.
   public static func upToDate(current: SemanticVersion) -> UpdateAlertContent {
     UpdateAlertContent(
-      title: "You’re up to date",
-      message: "\(appVersionLabel(current)) is the latest version.",
-      buttons: ["OK"])
+      title: "У вас последняя версия",
+      message: "\(appVersionLabel(current)) — последняя версия.",
+      buttons: ["ОК"])
   }
 
   /// A newer release exists. **Download** (the default) opens the release DMG in
@@ -79,9 +79,9 @@ public struct UpdateAlertContent: Equatable, Sendable {
     current: SemanticVersion, latest: SemanticVersion, dmgURL: URL
   ) -> UpdateAlertContent {
     UpdateAlertContent(
-      title: "A new version of \(productName) is available",
-      message: "\(appVersionLabel(latest)) is available—you have \(current). Download it now?",
-      buttons: ["Download", "Later"],
+      title: "Доступна новая версия \(productName)",
+      message: "Доступна \(appVersionLabel(latest)); у вас \(current). Скачать сейчас?",
+      buttons: ["Скачать", "Позже"],
       downloadURL: dmgURL)
   }
 
@@ -90,9 +90,9 @@ public struct UpdateAlertContent: Equatable, Sendable {
   /// same thing to the user (try again later), which is why `UpdateChecker`
   /// throws rather than enumerating them.
   public static let checkFailed = UpdateAlertContent(
-    title: "Couldn’t check for updates",
-    message: "Check your internet connection and try again.",
-    buttons: ["OK"],
+    title: "Не удалось проверить обновления",
+    message: "Проверьте интернет и попробуйте снова.",
+    buttons: ["ОК"],
     style: .warning)
 
   /// The alert an **unprompted** check should show, or `nil` when the result isn't

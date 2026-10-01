@@ -58,10 +58,11 @@ extension AssemblyAITranscriber {
     /// an addition — a compatibility shim that sent both names would 400 every
     /// dictation.
     let keytermsPrompt: [String]
-    /// VibeDictate is a Russian-first fork whose users commonly mix English
-    /// technical terms into Russian speech. The upstream auto-detection decision
-    /// is intentionally overridden here with the documented plural field.
-    let languageCodes: [String] = ["ru", "en"]
+    /// Keep short Russian utterances in Cyrillic. Offering English as a second
+    /// recognition language made a real five-second Russian recording come back
+    /// as Latin phonetics. English technical names can still be supplied through
+    /// keyterms prompting. The dictation route documents this plural field.
+    let languageCodes: [String] = ["ru"]
     /// The cleanup instruction the server-side rewrite should apply
     /// (`CleanupInstruction.sendable`, style profile and all), or nil to leave
     /// the wording to the service. `encode(to:)` then drops the key.

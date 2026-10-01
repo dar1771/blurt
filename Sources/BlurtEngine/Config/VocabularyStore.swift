@@ -3,12 +3,12 @@ import Foundation
 public struct VocabularyStore {
   public static let initialTerms = [
     "API", "SDK", "REST", "GraphQL", "WebSocket", "webhook", "endpoint", "frontend",
-    "backend", "database", "OpenAI", "OpenRouter", "AssemblyAI", "Gemini", "Claude", "GPT",
+    "backend", "database", "OpenAI", "OpenRouter", "AssemblyAI", "Gemini", "Claude", "Claude Code", "GPT",
     "Codex", "Cursor", "GitHub", "GitLab", "MCP", "LLM", "STT", "TTS", "JSON", "YAML",
     "HTTP", "HTTPS", "OAuth", "JWT", "SSH", "CLI", "Docker", "Kubernetes", "PostgreSQL",
     "Postgres", "SQLite", "Redis", "Supabase", "Firebase", "Vercel", "Cloudflare", "AWS",
     "Swift", "SwiftUI", "AppKit", "Xcode", "Python", "FastAPI", "JavaScript", "TypeScript",
-    "Node.js", "React", "Next.js", "Vue", "Tailwind", "npm", "pnpm", "Bun",
+    "Node.js", "React", "Next.js", "Vue", "Tailwind", "npm", "pnpm", "Bun", "vibe-кодер", "skills",
   ]
 
   public static var defaultsKey: String { DefaultsKey.vocabulary.key }

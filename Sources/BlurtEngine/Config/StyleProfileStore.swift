@@ -81,7 +81,7 @@ public struct StyleProfileStore {
   /// its hidden ⌘1 shortcut button. Defined once here so the two can't drift
   /// apart. Deliberately *not* recorded onto recent dictations: a row only
   /// names a custom style, base-styled rows show just their time.
-  public static let defaultStyleName = "Default"
+  public static let defaultStyleName = "По умолчанию"
 
   /// What the active-id slot holds when the user has clicked **Default**:
   /// base styling, no profile's instructions appended. A sentinel *distinct
