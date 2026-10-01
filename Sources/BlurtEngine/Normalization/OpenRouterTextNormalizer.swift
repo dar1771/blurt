@@ -39,17 +39,27 @@ public struct OpenRouterTextNormalizer: TextNormalizer {
   }
 
   public func normalize(rawTranscript: String, vocabulary: [String]) async throws -> String {
+    try await normalizeWithMetadata(rawTranscript: rawTranscript, vocabulary: vocabulary).text
+  }
+
+  public func normalizeWithMetadata(
+    rawTranscript: String, vocabulary: [String]
+  ) async throws -> NormalizedText {
     guard let key = apiKeyProvider()?.trimmedNonEmpty() else {
       throw OpenRouterError.missingAPIKey
     }
     let model = modelProvider()
     do {
-      return try await requestNormalization(
-        model: model, key: key, rawTranscript: rawTranscript, vocabulary: vocabulary)
+      return NormalizedText(
+        text: try await requestNormalization(
+          model: model, key: key, rawTranscript: rawTranscript, vocabulary: vocabulary),
+        model: model)
     } catch OpenRouterError.httpStatus(403) where model.hasPrefix("google/") {
-      return try await requestNormalization(
-        model: Self.fallbackModel, key: key,
-        rawTranscript: rawTranscript, vocabulary: vocabulary)
+      return NormalizedText(
+        text: try await requestNormalization(
+          model: Self.fallbackModel, key: key,
+          rawTranscript: rawTranscript, vocabulary: vocabulary),
+        model: Self.fallbackModel)
     }
   }
 

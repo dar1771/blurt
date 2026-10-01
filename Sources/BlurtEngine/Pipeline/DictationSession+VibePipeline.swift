@@ -100,17 +100,17 @@ extension DictationSession {
   ) async {
     var record = initialRecord
 
-    var normalized: String?
+    var normalized: NormalizedText?
     if let normalizer = pipeline.normalizer, routed.raw.trimmedNonEmpty() != nil {
       setPhase(.normalizing)
-      normalized = try? await normalizer.normalize(
+      normalized = try? await normalizer.normalizeWithMetadata(
         rawTranscript: routed.raw, vocabulary: keyTermsProvider())
       if Task.isCancelled { return }
     }
-    record.normalizedTranscript = normalized?.trimmedNonEmpty()
+    record.normalizedTranscript = normalized?.text.trimmedNonEmpty()
     if record.normalizedTranscript != nil {
       record.normalizationProvider = "OpenRouter"
-      record.normalizationModel = pipeline.normalizationModel()
+      record.normalizationModel = normalized?.model ?? pipeline.normalizationModel()
     }
 
     let selected =

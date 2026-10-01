@@ -7,12 +7,12 @@ extension HistoryModel {
     Task {
       do {
         let normalizer = OpenRouterTextNormalizer(apiKeyProvider: { OpenRouterAPIKeyStore.current })
-        let text = try await normalizer.normalize(
+        let result = try await normalizer.normalizeWithMetadata(
           rawTranscript: record.rawTranscript, vocabulary: VocabularyStore().terms)
         var updated = record
-        updated.normalizedTranscript = text
+        updated.normalizedTranscript = result.text
         updated.normalizationProvider = "OpenRouter"
-        updated.normalizationModel = OpenRouterModelStore().modelID
+        updated.normalizationModel = result.model
         updated.status = .ready
         try await historyStore?.upsert(updated)
         await load()
@@ -35,14 +35,14 @@ extension HistoryModel {
           audioFileURL: audioURL, vocabulary: VocabularyStore().terms)
         let normalized = try? await OpenRouterTextNormalizer(
           apiKeyProvider: { OpenRouterAPIKeyStore.current }
-        ).normalize(rawTranscript: raw, vocabulary: VocabularyStore().terms)
+        ).normalizeWithMetadata(rawTranscript: raw, vocabulary: VocabularyStore().terms)
         updated.finishedAt = Date()
         updated.pipelineMode = .long
         updated.rawTranscript = raw
-        let normalizedText = normalized?.trimmedNonEmpty()
+        let normalizedText = normalized?.text.trimmedNonEmpty()
         updated.normalizedTranscript = normalizedText
         updated.normalizationProvider = normalizedText == nil ? nil : "OpenRouter"
-        updated.normalizationModel = normalizedText == nil ? nil : OpenRouterModelStore().modelID
+        updated.normalizationModel = normalizedText == nil ? nil : normalized?.model
         updated.status = .ready
       } catch {
         updated.finishedAt = Date()

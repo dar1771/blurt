@@ -56,9 +56,10 @@ struct OpenRouterTextNormalizerTests {
     let normalizer = OpenRouterTextNormalizer(
       apiKeyProvider: { "key" }, modelProvider: { "google/gemini-3.8-flash" },
       transport: transport)
-    let result = try await normalizer.normalize(
+    let result = try await normalizer.normalizeWithMetadata(
       rawTranscript: "Cloud Code и Skills.", vocabulary: ["Claude Code", "skills"])
-    #expect(result == "Claude Code и skills.")
+    #expect(result.text == "Claude Code и skills.")
+    #expect(result.model == "openai/gpt-4.1-mini")
     #expect(models.value == ["google/gemini-3.8-flash", "openai/gpt-4.1-mini"])
   }
 

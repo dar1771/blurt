@@ -64,4 +64,21 @@ xcodebuild \
   "DEVELOPMENT_TEAM=${VIBEDICTATE_DEVELOPMENT_TEAM:-B2VQF7Q2QY}" \
   clean build | "${PRETTY[@]}"
 
+installed_app="/Applications/VibeDictate Dev.app"
+if [ ! -d "$installed_app" ]; then
+  installed_app="$HOME/Applications/VibeDictate Dev.app"
+fi
+
+# Copying a new bundle does not replace a process already running from it.
+# Restart it here so a manual acceptance test cannot exercise yesterday's code.
+running_pids="$(pgrep -f "$installed_app/Contents/MacOS/Blurt" || true)"
+if [ -n "$running_pids" ]; then
+  info "Restarting the running VibeDictate Dev to load the installed build"
+  while IFS= read -r running_pid; do
+    kill -TERM "$running_pid"
+  done <<< "$running_pids"
+  sleep 2
+  open -a "$installed_app"
+fi
+
 info "Done. Launch with: open -a 'VibeDictate Dev'"
