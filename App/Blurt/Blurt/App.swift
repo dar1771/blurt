@@ -56,7 +56,7 @@ struct BlurtApp: App {
 
     // Settings window: the app menu, ready screen, and menu-bar item all open
     // this same scene through `AppDelegate.openSettings`.
-    Window("Настройки", id: SettingsWindow.id) {
+    Window(UITestIdentifiers.settingsWindowTitle, id: SettingsWindow.id) {
       SettingsWindowRoot(appDelegate: appDelegate)
     }
     .windowResizability(.contentSize)

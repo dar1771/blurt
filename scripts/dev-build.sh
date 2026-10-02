@@ -76,7 +76,7 @@ if [ -n "$running_pids" ]; then
   info "Restarting the running VibeDictate Dev to load the installed build"
   while IFS= read -r running_pid; do
     kill -TERM "$running_pid"
-  done <<< "$running_pids"
+  done <<<"$running_pids"
   sleep 2
   open -a "$installed_app"
 fi

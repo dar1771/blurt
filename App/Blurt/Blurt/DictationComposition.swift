@@ -1,4 +1,31 @@
 import BlurtEngine
+import Foundation
+
+#if DEBUG
+  /// Lets a signed local build replay a saved recording through the same API
+  /// key and long-transcription path without exposing the key to a CLI tool.
+  enum DebugFileTranscription {
+    static func runIfRequested() -> Bool {
+      let arguments = ProcessInfo.processInfo.arguments
+      guard let option = arguments.firstIndex(of: "--transcribe-file"),
+        arguments.indices.contains(option + 1)
+      else { return false }
+      let audioURL = URL(fileURLWithPath: arguments[option + 1])
+      Task {
+        do {
+          let text = try await AssemblyAILongTranscriber().transcribe(
+            audioFileURL: audioURL, vocabulary: [])
+          FileHandle.standardOutput.write(Data((text + "\n").utf8))
+          exit(EXIT_SUCCESS)
+        } catch {
+          FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
+          exit(EXIT_FAILURE)
+        }
+      }
+      return true
+    }
+  }
+#endif
 
 /// The set of engine collaborators `AppCoordinator` composes into a
 /// `DictationSession` — exactly the three pipeline seams, since

@@ -203,7 +203,7 @@ into its designated requirement and makes every rebuild a different app to `tccd
 Blurt row switched on and still denied, and the machinery to work around it (a self-heal path, a
 `tccutil` line in the PR comment, a fork-only `workflow_run` job to post it at all) outweighed what
 it bought. Don't reintroduce it without solving the signing problem first. Reviewers build locally:
-   `scripts/dev-build.sh`.
+`scripts/dev-build.sh`.
 
 Reporting rules: exit 0 with no `error:` lines is green. Anything else is not — quote the failing
 step verbatim, don't soften it, fix it, then re-run the **full** script (a `swift test --filter` pass

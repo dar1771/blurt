@@ -112,27 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     #if DEBUG
-      // Run a saved audio file through the same signed app and Keychain identity
-      // used by dictation. This lets local acceptance compare a reference clip
-      // without granting a separate command-line tool access to the API key.
-      let arguments = ProcessInfo.processInfo.arguments
-      if let option = arguments.firstIndex(of: "--transcribe-file"),
-        arguments.indices.contains(option + 1)
-      {
-        let audioURL = URL(fileURLWithPath: arguments[option + 1])
-        Task {
-          do {
-            let text = try await AssemblyAILongTranscriber().transcribe(
-              audioFileURL: audioURL, vocabulary: [])
-            FileHandle.standardOutput.write(Data((text + "\n").utf8))
-            exit(EXIT_SUCCESS)
-          } catch {
-            FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
-            exit(EXIT_FAILURE)
-          }
-        }
-        return
-      }
+      if DebugFileTranscription.runIfRequested() { return }
     #endif
     // No permission prompts fire at launch. Accessibility (and Microphone) are
     // requested only when the user taps the matching button in the setup
