@@ -22,7 +22,7 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
     guard let key = apiKeyProvider()?.trimmedNonEmpty() else {
       throw BlurtError.apiKeyMissing
     }
-    let audio = try Data(contentsOf: audioFileURL, options: .mappedIfSafe)
+    let audio = WAVUploadGain.adjusted(try Data(contentsOf: audioFileURL, options: .mappedIfSafe))
     let upload: UploadResponse = try await send(
       path: "v2/upload", method: "POST", key: key, body: audio,
       contentType: "application/octet-stream")
