@@ -120,6 +120,6 @@ enum UITestIdentifiers {
   // Sentinel API keys the offline UI-test validation recognizes
   // (`UITestKeyValidation`); the suite types these to drive the settings paths.
   static let validAPIKey = "uitest-valid-key"
-  static let invalidAPIKey = "uitest-invalid-key"
+  static let invalidAPIKey = "x"
   static let unreachableAPIKey = "uitest-unreachable-key"
 }

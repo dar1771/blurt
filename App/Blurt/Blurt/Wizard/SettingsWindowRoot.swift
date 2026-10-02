@@ -1,41 +1,37 @@
 import BlurtEngine
 import SwiftUI
 
-/// Root view of the Settings window. A `TabView` renders a segmented toolbar
-/// of panes (General / Advanced), each sized to its own content. This is the
-/// HIG-native answer to a settings screen that outgrows one pane: keeping every
-/// pane short means the window never has to grow past a small display (a single
-/// stacked `Form` did, stranding the bottom section off-screen). Each pane
-/// reuses the same section views the wizard's setup step uses, so the two stay
-/// in sync.
+/// Settings panes stay short enough to fit on a small display. The explicit
+/// selector keeps all four panes visible and accessible even when AppKit would
+/// collapse a TabView toolbar into an overflow menu.
 struct SettingsWindowRoot: View {
   @ObservedObject var appDelegate: AppDelegate
 
   private enum Tab: Hashable { case general, textShortcuts, vibeDictate, advanced }
 
-  /// Drives the selected pane from `@State` (not the OS's persisted preference
-  /// tab), so the window always opens on General. Without an explicit binding
-  /// macOS restores the last-used pane across launches, which retitles the
-  /// window ("General" → "Advanced") and made the settings window unfindable in
-  /// UI tests from one run to the next. The one exception is the main window's
-  /// "+" (add style) deep-link, consumed below.
+  /// Always open on General, except for the main window's "+" deep-link.
   @State private var tab: Tab = .general
 
   var body: some View {
     if let coordinator = appDelegate.coordinator {
-      TabView(selection: $tab) {
-        GeneralSettingsTab(coordinator: coordinator)
-          .tabItem { Label(UITestIdentifiers.generalSettingsTab, systemImage: "gearshape") }
-          .tag(Tab.general)
-        TextShortcutsSection()
-          .tabItem { Label(UITestIdentifiers.textShortcutsTab, systemImage: "text.badge.plus") }
-          .tag(Tab.textShortcuts)
-        VibeDictateSettingsTab(history: appDelegate.historyModel)
-          .tabItem { Label("VibeDictate", systemImage: "waveform.and.mic") }
-          .tag(Tab.vibeDictate)
-        AdvancedSettingsTab(coordinator: coordinator, updateModel: appDelegate.updateCheckModel)
-          .tabItem { Label(UITestIdentifiers.advancedSettingsTab, systemImage: "gearshape.2") }
-          .tag(Tab.advanced)
+      VStack(spacing: 0) {
+        HStack(spacing: 4) {
+          tabButton(UITestIdentifiers.generalSettingsTab, .general)
+          tabButton(UITestIdentifiers.textShortcutsTab, .textShortcuts)
+          tabButton("VibeDictate", .vibeDictate)
+          tabButton(UITestIdentifiers.advancedSettingsTab, .advanced)
+        }
+        .padding(12)
+        Divider()
+        Group {
+          switch tab {
+          case .general: GeneralSettingsTab(coordinator: coordinator)
+          case .textShortcuts: TextShortcutsSection()
+          case .vibeDictate: VibeDictateSettingsTab(history: appDelegate.historyModel)
+          case .advanced:
+            AdvancedSettingsTab(coordinator: coordinator, updateModel: appDelegate.updateCheckModel)
+          }
+        }
       }
       .frame(width: MainWindow.contentWidth)
       // Consumes the "+" deep-link (`AppDelegate.settingsOpensOnAdvanced`):
@@ -51,6 +47,18 @@ struct SettingsWindowRoot: View {
     } else {
       Color.clear.frame(width: MainWindow.contentWidth, height: 240)
     }
+  }
+
+  private func tabButton(_ title: String, _ destination: Tab) -> some View {
+    Button {
+      tab = destination
+    } label: {
+      Text(title).frame(maxWidth: .infinity)
+    }
+    .buttonStyle(.plain)
+    .padding(.vertical, 7)
+    .background(tab == destination ? Color.accentColor.opacity(0.16) : Color.clear)
+    .clipShape(RoundedRectangle(cornerRadius: 7))
   }
 
   private func consumeAdvancedDeepLink() {

@@ -37,6 +37,10 @@ final class SettingsUITests: BlurtUITestCase {
     let sheet = openKeyEditor(settings)
 
     typeKey(UITestIdentifiers.invalidAPIKey, into: sheet)
+    sheet.checkBoxes[UITestIdentifiers.apiKeyReveal].click()
+    XCTAssertEqual(
+      sheet.textFields[UITestIdentifiers.apiKeyField].value as? String,
+      UITestIdentifiers.invalidAPIKey)
     sheet.buttons[UITestIdentifiers.apiKeySave].click()
 
     let error = sheet.staticTexts[UITestIdentifiers.apiKeyError]
