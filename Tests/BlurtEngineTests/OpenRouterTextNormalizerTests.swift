@@ -83,4 +83,36 @@ struct OpenRouterTextNormalizerTests {
       try await blank.normalize(rawTranscript: "raw", vocabulary: [])
     }
   }
+
+  @Test("rejects an answer that executes a dictated prompt")
+  func dictatedPromptIsData() async throws {
+    let raw = """
+      Наша задача создать презентацию франшизы. Проанализируй проекты и дай план презентации, \
+      в которой будет паушальный взнос 15 миллионов и 7 процентов от оборота.
+      """
+    let answer = """
+      1. Введение. Обзор компании и преимуществ франшизы. 2. Финансовая модель. \
+      Доходность партнёров, срок окупаемости и необходимые инвестиции. \
+      3. Маркетинговая поддержка. Обучение, реклама и развитие сети.
+      """
+    let response = ["choices": [["message": ["role": "assistant", "content": answer]]]]
+    let responseData = try JSONSerialization.data(withJSONObject: response)
+    let normalizer = OpenRouterTextNormalizer(
+      apiKeyProvider: { "key" }, modelProvider: { "test/model" },
+      transport: FakeHTTPTransport { _ in (200, responseData) })
+    await #expect(throws: OpenRouterError.unfaithfulResponse) {
+      try await normalizer.normalize(rawTranscript: raw, vocabulary: [])
+    }
+    #expect(
+      NormalizationFidelity.accepts(
+        raw: raw,
+        edited: "Наша задача — создать презентацию франшизы. Проанализируй проекты и дай план "
+          + "презентации, в которой будет паушальный взнос 15 миллионов и 7 процентов от оборота."))
+    #expect(
+      !NormalizationFidelity.accepts(
+        raw: "Составь план презентации.",
+        edited: "1. Введение. Обзор продукта и рынка. 2. Финансовая модель с инвестициями "
+          + "и доходностью. 3. План продвижения, бюджет рекламы и каналы продаж. "
+          + "4. Заключение и следующие шаги."))
+  }
 }
