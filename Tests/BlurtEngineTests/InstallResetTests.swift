@@ -77,8 +77,8 @@ struct InstallResetTests {
 
     // Each step's answer lands in its own field of the report behind this — a
     // swapped pair would name the wrong thing here.
-    #expect(alert.message.contains("permissions"))
-    #expect(!alert.message.contains("API key"))
+    #expect(alert.message.contains("разрешения"))
+    #expect(!alert.message.contains("ключ API"))
   }
 }
 
@@ -101,9 +101,9 @@ struct InstallResetAlertTests {
 
     let alert = try #require(report.failureAlert)
 
-    #expect(alert.message.contains("permissions"))
-    #expect(!alert.message.contains("API key"))
-    #expect(!alert.message.contains("dictation logs"))
+    #expect(alert.message.contains("разрешения"))
+    #expect(!alert.message.contains("ключ API"))
+    #expect(!alert.message.contains("журналы диктовок"))
     #expect(!alert.title.isEmpty)
   }
 
@@ -114,8 +114,8 @@ struct InstallResetAlertTests {
 
     let alert = try #require(report.failureAlert)
 
-    #expect(alert.message.contains("API key"))
-    #expect(alert.message.contains("permissions"))
-    #expect(alert.message.contains("dictation logs"))
+    #expect(alert.message.contains("ключ API"))
+    #expect(alert.message.contains("разрешения"))
+    #expect(alert.message.contains("журналы диктовок"))
   }
 }

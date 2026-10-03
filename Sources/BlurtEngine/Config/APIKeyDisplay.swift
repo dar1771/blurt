@@ -51,8 +51,8 @@ public enum APIKeyDisplay: Equatable, Sendable {
   /// question a checkmark can't answer), otherwise plain prose.
   public var statusText: String {
     switch self {
-    case .notConnected: "Not connected"
-    case .connected(let maskedTail): maskedTail ?? "Connected"
+    case .notConnected: "Не подключено"
+    case .connected(let maskedTail): maskedTail ?? "Подключено"
     }
   }
 
@@ -71,12 +71,12 @@ public enum APIKeyDisplay: Equatable, Sendable {
   /// things — the same split as `OverlayUIState.accessibilityLabel`.
   public var accessibilityLabel: String {
     switch self {
-    case .notConnected: "Not connected"
+    case .notConnected: "Не подключено"
     case .connected(let maskedTail):
       // Drop the mask bullets and name just the revealed characters, which is
       // what a screen-reader user needs to identify the account.
-      maskedTail.map { "Connected, key ending \($0.suffix(Self.revealedTailLength))" }
-        ?? "Connected"
+      maskedTail.map { "Подключено, последние символы ключа: \($0.suffix(Self.revealedTailLength))" }
+        ?? "Подключено"
     }
   }
 
@@ -84,20 +84,20 @@ public enum APIKeyDisplay: Equatable, Sendable {
   /// that needs more input before the action completes — the same rule that
   /// gives "Open Accessibility Settings…" its ellipsis.
   public var editButtonTitle: String {
-    isConnected ? "Change…" : "Connect…"
+    isConnected ? "Изменить…" : "Подключить…"
   }
 
   /// Title of the sheet's default action. "Save" would describe storage; the
   /// operation is really verify-then-store, and on first run it's a connection.
   public var commitButtonTitle: String {
-    isConnected ? "Update" : "Connect"
+    isConnected ? "Обновить" : "Подключить"
   }
 
   /// The sheet's headline explanation — why a key is needed on first run, what
   /// pasting one does once a key already exists.
   public var rationale: String {
     isConnected
-      ? "Paste a new key to replace the one Blurt is using."
-      : "Blurt needs an AssemblyAI API key to transcribe your speech. A free-tier key works."
+      ? "Вставьте новый ключ вместо текущего ключа VibeDictate."
+      : "Для распознавания речи нужен ключ API AssemblyAI. Подойдёт бесплатный ключ."
   }
 }

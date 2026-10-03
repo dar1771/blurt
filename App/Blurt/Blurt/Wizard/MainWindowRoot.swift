@@ -9,10 +9,8 @@ import SwiftUI
 // - Main window (`MainWindow`): the primary window, a `Window` scene opened via
 //   `openWindow(id:)`. While the app isn't fully configured it shows the setup
 //   wizard; once it is, it shows `ReadyView` (the shortcut readout).
-// - Settings (`SettingsWindowRoot`): change the API key or dictation shortcut. A
-//   `Settings` scene, so ⌘, comes wired for free; opened programmatically via the
-//   `openSettings` environment action (the ready screen's buttons and the menu
-//   bar item).
+// - Settings (`SettingsWindowRoot`): change the API key or dictation shortcut.
+//   An explicit window id lets the app menu, ready screen, and menu bar open it.
 
 enum MainWindow {
   /// Scene identifier for `openWindow(id:)` / the `Window(id:)` scene.
@@ -53,13 +51,14 @@ enum MainWindow {
   static let contentMargin: CGFloat = 24
 }
 
+enum SettingsWindow { static let id = "settings" }
+
 /// Root view of the main `Window` scene. It pulls the long-lived models off the
 /// app delegate (created at launch, before any window appears) and routes between
 /// the setup wizard (when the app isn't ready) and the ready screen (when it is).
 struct MainWindowRoot: View {
-  var appDelegate: AppDelegate
+  @ObservedObject var appDelegate: AppDelegate
   @Environment(\.openWindow) private var openWindow
-  @Environment(\.openSettings) private var openSettings
 
   var body: some View {
     if let controller = appDelegate.wizardController, let coordinator = appDelegate.coordinator {
@@ -67,13 +66,10 @@ struct MainWindowRoot: View {
         if controller.isReady {
           ReadyView(
             coordinator: coordinator,
-            openSettings: { openSettings() },
+            openSettings: { appDelegate.openSettings() },
             editStyles: {
-              // "Edit Styles…" deep-links: flag the Advanced pane (where
-              // styles are edited) before opening, so the user lands on the
-              // Styles section instead of General — see `SettingsWindowRoot`.
               appDelegate.settingsOpensOnAdvanced = true
-              openSettings()
+              appDelegate.openSettings()
             })
         } else {
           WizardView(controller: controller, coordinator: coordinator)
@@ -95,6 +91,11 @@ struct MainWindowRoot: View {
         // sees it (`leaks.sh` can't fault an `AppDelegate` reachable from a root, and
         // `MemoryLeakTests` covers only the engine).
         appDelegate.openWindowByID = { [openWindow] id in openWindow(id: id) }
+        #if UITEST_HOOKS
+          if UITestMode.isActive {
+            appDelegate.openWindowByID?(UITestIdentifiers.harnessWindowID)
+          }
+        #endif
         // Permission polling runs for the app's whole life (started in the
         // controller's init), so the window only needs to refresh once on
         // appear to reflect any change made while it was closed.

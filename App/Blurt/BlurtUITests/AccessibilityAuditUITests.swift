@@ -1,6 +1,6 @@
 import XCTest
 
-/// Runs `XCUIApplication.performAccessibilityAudit()` on each screen. The audit
+/// On macOS 14+, runs `XCUIApplication.performAccessibilityAudit()` on each screen. The audit
 /// auto-flags hit-target size, clipped/overlapping text, element detection, and
 /// trait problems — enforcing the a11y investment the app already makes (overlay
 /// VoiceOver announcements, menu-bar labels, control identifiers) at near-zero
@@ -24,20 +24,24 @@ import XCTest
 ///   former fires on decorative keycap capsules SwiftUI tags with an action-ish
 ///   trait but no action; the latter is an AX-snapshot inconsistency that
 ///   survives the audit's own retries — a framework bug, not our hierarchy.
-private let auditedTypes: XCUIAccessibilityAuditType = .all.subtracting([
-  .contrast, .sufficientElementDescription, .action, .parentChild,
-])
-
 final class AccessibilityAuditUITests: BlurtUITestCase {
   /// The setup wizard / ready screen shown in the main window.
+  @available(macOS 14.0, *)
   func testMainWindowAccessibility() throws {
     mainWindow()
-    try app.performAccessibilityAudit(for: auditedTypes)
+    try app.performAccessibilityAudit(
+      for: .all.subtracting([
+        .contrast, .sufficientElementDescription, .action, .parentChild,
+      ]))
   }
 
   /// The Settings window (API key, hotkey, sound, key terms).
+  @available(macOS 14.0, *)
   func testSettingsAccessibility() throws {
     openSettingsWindow()
-    try app.performAccessibilityAudit(for: auditedTypes)
+    try app.performAccessibilityAudit(
+      for: .all.subtracting([
+        .contrast, .sufficientElementDescription, .action, .parentChild,
+      ]))
   }
 }

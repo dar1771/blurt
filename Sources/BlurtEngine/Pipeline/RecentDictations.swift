@@ -113,9 +113,9 @@ extension RecentDictations.Entry {
   /// formatter's bare "in 0 seconds" reads oddly for a dictation that just
   /// landed), then the full relative phrasing ("2 minutes ago"). `now` is
   /// injected so tests are deterministic; `locale` so they can pin the wording.
-  public func relativeLabel(now: Date, locale: Locale = .autoupdatingCurrent) -> String {
+  public func relativeLabel(now: Date, locale: Locale = Locale(identifier: "ru_RU")) -> String {
     if now.timeIntervalSince(timestamp) < Self.justNowThreshold {
-      return "just now"
+      return "только что"
     }
     // Built per call rather than cached: a stored formatter would be shared
     // mutable state (RelativeDateTimeFormatter isn't Sendable), and this runs

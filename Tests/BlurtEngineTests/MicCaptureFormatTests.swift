@@ -68,13 +68,13 @@ struct MicCaptureFormatTests {
     // This message reaches the overlay via BlurtError.audioCaptureFailed's
     // interpolation of the underlying error, so it must read like a sentence,
     // not the default "(… error 0.)" gibberish a bare enum produces.
-    #expect(MicCaptureError.noInputDevice.errorDescription == "No microphone is available.")
+    #expect(MicCaptureError.noInputDevice.errorDescription == "Микрофон недоступен.")
   }
 
   @Test func inputNeverDeliveredHasHumanReadableMessage() {
     // The liveness gate's fail-closed outcome — same route to the pill as
     // noInputDevice above, and the same sentence requirement. Together the two
     // also keep MicCaptureError.swift's errorDescription fully covered.
-    #expect(MicCaptureError.inputNeverDelivered.errorDescription == "The microphone didn't start.")
+    #expect(MicCaptureError.inputNeverDelivered.errorDescription == "Не удалось включить микрофон.")
   }
 }

@@ -54,13 +54,13 @@ struct MicrophoneStepView: View {
   }
 
   private var systemDefaultLabel: String {
-    systemDefaultName.map { "Same as system (\($0))" } ?? "Same as system"
+    systemDefaultName.map { "Как в системе (\($0))" } ?? "Как в системе"
   }
 
   var body: some View {
     Section {
       PickerSettingRow(
-        title: "Input device", systemImage: "mic",
+        title: "Устройство ввода", systemImage: "mic",
         accessibilityID: UITestIdentifiers.micPicker, selection: selection
       ) {
         Text(systemDefaultLabel).tag(MicDeviceSelection.systemDefault)
@@ -68,13 +68,13 @@ struct MicrophoneStepView: View {
           Text(device.name).tag(MicDeviceSelection.pinned(uid: device.uid))
         }
         if let missingPin {
-          Text("Disconnected microphone").tag(missingPin)
+          Text("Микрофон отключён").tag(missingPin)
         }
       }
     } header: {
-      Text("Microphone")
+      Text("Микрофон")
     } footer: {
-      Text("Dictation records from this microphone. While it isn't connected, the system default is used.")
+      Text("Запись идёт с выбранного микрофона. Если он отключён, используется системный.")
     }
     // Off the main actor, and `.task` rather than `.onAppear` to have somewhere
     // to await: enumerating devices is the first thing to touch AVFoundation's

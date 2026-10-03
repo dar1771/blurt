@@ -32,19 +32,19 @@ struct TextShortcutsSection: View {
                 .truncationMode(.middle)
             }
             Spacer(minLength: 12)
-            Button("Edit…") { editing = shortcut }
+            Button("Изменить…") { editing = shortcut }
               .accessibilityIdentifier(UITestIdentifiers.textShortcutEdit(index))
           }
         }
-        Button("Add Shortcut…") { editing = TextShortcut(trigger: "", expansion: "") }
+        Button("Добавить замену…") { editing = TextShortcut(trigger: "", expansion: "") }
           .disabled(shortcuts.count >= TextShortcutStore.shortcutLimit)
           .accessibilityIdentifier(UITestIdentifiers.textShortcutAdd)
       } header: {
-        Text("Text Shortcuts")
+        Text("Замены текста")
       } footer: {
         Text(
-          "Say a phrase while dictating and it's replaced with your saved text — "
-            + "for example, “personal email” becomes your address.")
+          "Произнесите фразу, и она заменится сохранённым текстом. "
+            + "Например, «мой адрес» превратится в адрес электронной почты.")
       }
     }
     .formStyle(.grouped)
@@ -98,47 +98,47 @@ private struct TextShortcutEditorSheet: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 6) {
-        Text("Text Shortcut")
+        Text("Замена текста")
           .font(.headline)
-        Text("When you say the phrase, Blurt pastes the replacement instead.")
+        Text("Когда вы произнесёте фразу, VibeDictate вставит замену.")
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
 
       VStack(alignment: .leading, spacing: 6) {
-        Text("Phrase")
+        Text("Фраза")
           .font(.subheadline.weight(.semibold))
-        TextField("", text: $trigger, prompt: Text("e.g. personal email"))
+        TextField("", text: $trigger, prompt: Text("Например: мой адрес"))
           .lineLimit(1)
           .disableAutocorrection(true)
           .focused($triggerFocused)
-          .accessibilityLabel("Phrase")
+          .accessibilityLabel("Фраза")
           .accessibilityIdentifier(UITestIdentifiers.textShortcutTrigger)
-          .onChange(of: trigger) {
+          .onChange(of: trigger) { _ in
             if trigger.count > TextShortcutStore.triggerLimit {
               trigger = String(trigger.prefix(TextShortcutStore.triggerLimit))
             }
           }
         if duplicatesAnother {
-          Text("Another shortcut already uses this phrase.")
+          Text("Эта фраза уже используется в другой замене.")
             .font(.caption)
             .foregroundStyle(.red)
         }
       }
 
       VStack(alignment: .leading, spacing: 6) {
-        Text("Replacement")
+        Text("Замена")
           .font(.subheadline.weight(.semibold))
         TextField(
-          text: $expansion, prompt: Text("e.g. me@example.com"), axis: .vertical
+          text: $expansion, prompt: Text("Например: me@example.com"), axis: .vertical
         ) {
-          Text("Replacement")
+          Text("Замена")
         }
         .labelsHidden()
         .lineLimit(1...6)
         .disableAutocorrection(true)
         .accessibilityIdentifier(UITestIdentifiers.textShortcutExpansion)
-        .onChange(of: expansion) {
+        .onChange(of: expansion) { _ in
           if expansion.count > TextShortcutStore.expansionLimit {
             expansion = String(expansion.prefix(TextShortcutStore.expansionLimit))
           }
@@ -147,14 +147,14 @@ private struct TextShortcutEditorSheet: View {
 
       HStack(spacing: 12) {
         if isExisting {
-          Button("Delete", role: .destructive, action: delete)
+          Button("Удалить", role: .destructive, action: delete)
             .accessibilityIdentifier(UITestIdentifiers.textShortcutDelete)
         }
         Spacer(minLength: 12)
-        Button("Cancel") { dismiss() }
+        Button("Отмена") { dismiss() }
           .keyboardShortcut(.cancelAction)
           .accessibilityIdentifier(UITestIdentifiers.textShortcutCancel)
-        Button("Save", action: save)
+        Button("Сохранить", action: save)
           .glassButtonStyleCompat(prominent: true)
           .keyboardShortcut(.defaultAction)
           .disabled(!canSave)

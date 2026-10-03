@@ -46,15 +46,15 @@ public struct InstallReset {
     /// added later can't ship with an alert that forgets to name it.
     var failureAlert: AlertContent? {
       let survivors = [
-        apiKeyCleared ? nil : "your AssemblyAI API key",
-        permissionsCleared ? nil : "Blurt’s microphone, accessibility and input-monitoring permissions",
-        logsCleared ? nil : "the dictation logs",
+        apiKeyCleared ? nil : "ключ API AssemblyAI",
+        permissionsCleared ? nil : "разрешения VibeDictate на микрофон и управление компьютером",
+        logsCleared ? nil : "журналы диктовок",
       ].compactMap { $0 }
       guard !survivors.isEmpty else { return nil }
       return AlertContent(
-        title: "Blurt wasn’t fully reset",
-        message: "Couldn’t clear \(survivors.formatted(.list(type: .and))). "
-          + "Everything else was reset. Quit Blurt and try again.")
+        title: "Не удалось полностью сбросить VibeDictate",
+        message: "Не удалось удалить \(survivors.formatted(.list(type: .and))). "
+          + "Остальное сброшено. Перезапустите VibeDictate и повторите попытку.")
     }
   }
 

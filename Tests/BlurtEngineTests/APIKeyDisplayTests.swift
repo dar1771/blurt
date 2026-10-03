@@ -21,7 +21,7 @@ struct APIKeyDisplayTests {
   @Test("a whitespace-only key is no key at all")
   func blankKey() {
     // Matches how `APIKeyGateway` treats it (a whitespace write is a delete), so
-    // the row can't claim "Connected" over a key the store considers absent.
+    // the row can't claim "Подключено" over a key the store considers absent.
     #expect(APIKeyDisplay.resolve(key: "   \n\t ") == .notConnected)
   }
 
@@ -51,11 +51,11 @@ struct APIKeyDisplayTests {
   func shortKeyRevealsNothing() {
     // The regression this rule exists for: with a fixed `suffix(4)`, a 4- or
     // 3-character key put the entire secret on screen. Below the threshold the
-    // row says "Connected" and shows none of it.
+    // row says "Подключено" and shows none of it.
     for short in ["k", "ab", "sk-1", "sk-1234"] {
       let display = APIKeyDisplay.resolve(key: short)
       #expect(display == .connected(maskedTail: nil))
-      #expect(display.statusText == "Connected")
+      #expect(display.statusText == "Подключено")
       #expect(display.isConnected)
       // Prose, not an identifier — nothing to line up.
       #expect(!display.rendersIdentifier)
@@ -66,9 +66,9 @@ struct APIKeyDisplayTests {
   @Test("the not-connected row reads as prose, not as an identifier")
   func notConnectedIsProse() {
     // Every other `!rendersIdentifier` assertion here is about `.connected(nil)` — a
-    // short key that gets masked to bare "Connected" — so the `.notConnected` arm was
+    // short key that gets masked to bare "Подключено" — so the `.notConnected` arm was
     // unpinned, and flipping it to `true` survived the whole suite
-    // (`scripts/mutate.sh`). Monospacing "Not connected" would style a sentence as a
+    // (`scripts/mutate.sh`). Monospacing "Не подключено" would style a sentence as a
     // value.
     #expect(!APIKeyDisplay.notConnected.rendersIdentifier)
   }
@@ -93,11 +93,11 @@ struct APIKeyDisplayTests {
 
   @Test("VoiceOver spells the state out instead of speaking the bullets")
   func accessibilityLabels() {
-    #expect(APIKeyDisplay.resolve(key: nil).accessibilityLabel == "Not connected")
+    #expect(APIKeyDisplay.resolve(key: nil).accessibilityLabel == "Не подключено")
     #expect(
-      APIKeyDisplay.resolve(key: realKey).accessibilityLabel == "Connected, key ending cdef")
+      APIKeyDisplay.resolve(key: realKey).accessibilityLabel == "Подключено, последние символы ключа: cdef")
     // No tail to name, so no misleading "key ending" clause.
-    #expect(APIKeyDisplay.resolve(key: "sk-1").accessibilityLabel == "Connected")
+    #expect(APIKeyDisplay.resolve(key: "sk-1").accessibilityLabel == "Подключено")
   }
 
   @Test("the accessibility label never speaks the mask characters")
@@ -110,18 +110,18 @@ struct APIKeyDisplayTests {
     let empty = APIKeyDisplay.resolve(key: nil)
     let stored = APIKeyDisplay.resolve(key: realKey)
     // The row's button opens a sheet, so both titles keep the ellipsis.
-    #expect(empty.editButtonTitle == "Connect…")
-    #expect(stored.editButtonTitle == "Change…")
+    #expect(empty.editButtonTitle == "Подключить…")
+    #expect(stored.editButtonTitle == "Изменить…")
     // The sheet's default action commits, so neither does.
-    #expect(empty.commitButtonTitle == "Connect")
-    #expect(stored.commitButtonTitle == "Update")
+    #expect(empty.commitButtonTitle == "Подключить")
+    #expect(stored.commitButtonTitle == "Обновить")
     #expect(!empty.commitButtonTitle.hasSuffix("…"))
     #expect(!stored.commitButtonTitle.hasSuffix("…"))
   }
 
   @Test("the sheet's rationale explains the first connect, then the rotation")
   func rationale() {
-    #expect(APIKeyDisplay.resolve(key: nil).rationale.contains("needs an AssemblyAI API key"))
-    #expect(APIKeyDisplay.resolve(key: realKey).rationale.contains("replace"))
+    #expect(APIKeyDisplay.resolve(key: nil).rationale.contains("нужен ключ API AssemblyAI"))
+    #expect(APIKeyDisplay.resolve(key: realKey).rationale.contains("Вставьте новый ключ"))
   }
 }

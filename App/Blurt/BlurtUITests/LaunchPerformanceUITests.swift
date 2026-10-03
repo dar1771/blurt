@@ -17,7 +17,9 @@ final class LaunchPerformanceUITests: XCTestCase {
     var samples: [Duration] = []
     for i in 0..<3 {
       let app = XCUIApplication()
-      app.launchArguments += [UITestIdentifiers.launchArgument]
+      app.launchArguments += [
+        "-ApplePersistenceIgnoreState", "YES", UITestIdentifiers.launchArgument,
+      ]
       let elapsed = ContinuousClock().measure { app.launch() }
       XCTAssertTrue(
         app.windows[UITestIdentifiers.harnessWindowTitle].waitForExistence(timeout: 15),

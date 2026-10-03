@@ -18,8 +18,8 @@ public enum MenuBarStatus: Equatable, Sendable {
   /// live in one unit-tested place, mirroring `OverlayUIState.accessibilityLabel`.
   public var symbolName: String {
     switch self {
-    case .idle: "b.circle"
-    case .recording: "b.circle.fill"
+    case .idle: "v.circle"
+    case .recording: "v.circle.fill"
     case .transcribing: "waveform"
     }
   }
@@ -27,9 +27,9 @@ public enum MenuBarStatus: Equatable, Sendable {
   /// Spoken by VoiceOver, since the menu bar glyph is otherwise unlabelled.
   public var accessibilityLabel: String {
     switch self {
-    case .idle: "Blurt — idle"
-    case .recording: "Blurt — recording"
-    case .transcribing: "Blurt — transcribing"
+    case .idle: "VibeDictate — ожидание"
+    case .recording: "VibeDictate — запись"
+    case .transcribing: "VibeDictate — распознавание"
     }
   }
 }
@@ -38,8 +38,8 @@ extension PipelinePhase {
   /// How this phase should be reflected on the menu bar status item.
   public var menuBarStatus: MenuBarStatus {
     switch self {
-    case .recording: .recording
-    case .transcribing: .transcribing
+    case .recording, .longMode: .recording
+    case .transcribing, .normalizing: .transcribing
     // `.connecting` reads as idle: the filled glyph means "audio is being
     // captured", and during the mic bring-up it isn't yet — the same honesty
     // rule that holds the start chime. The pill carries the warming-up state,

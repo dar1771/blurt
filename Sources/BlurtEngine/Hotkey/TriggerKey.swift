@@ -37,8 +37,8 @@ public enum TriggerKey: Int, CaseIterable, Sendable, Hashable {
   /// Inline sentence form, e.g. "Tap or hold right ⌘ to dictate".
   public var label: String {
     switch self {
-    case .rightCommand: return "right ⌘"
-    case .rightOption: return "right ⌥"
+    case .rightCommand: return "правую ⌘"
+    case .rightOption: return "правую ⌥"
     }
   }
 
@@ -47,8 +47,8 @@ public enum TriggerKey: Int, CaseIterable, Sendable, Hashable {
   /// the bare symbol alone assumes the reader already knows the glyph.
   public var fullName: String {
     switch self {
-    case .rightCommand: return "Right Command (⌘)"
-    case .rightOption: return "Right Option (⌥)"
+    case .rightCommand: return "правую Command (⌘)"
+    case .rightOption: return "правую Option (⌥)"
     }
   }
 }

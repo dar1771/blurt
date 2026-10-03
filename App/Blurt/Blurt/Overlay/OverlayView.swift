@@ -8,7 +8,7 @@ struct OverlayView: View {
   // below); the leaf bar view (`WaveformBarsLevel`, under `WaveformMeter`) reads `bridge.level`, so
   // @Observable confines the per-tick invalidation to the bars — the rest of
   // the pill stays stable.
-  let bridge: OverlayBridge
+  @ObservedObject var bridge: OverlayBridge
 
   private var state: OverlayUIState { bridge.state }
 
@@ -89,9 +89,9 @@ struct OverlayView: View {
       // pill's own 0.08 s fade-in, so it blends into the appearance rather than
       // flashing; on a Bluetooth route it holds for as long as the link takes,
       // which is the whole point.
-      waitingContent("Connecting")
+      waitingContent("Подключаюсь")
         .transition(.opacity)
-    case .recording:
+    case .recording, .longMode:
       // The orb beside the live waveform, its ring sweeping as it does in every
       // other state — the orb is one object and doesn't change behaviour with
       // the content next to it. The meter carries the level; the ring carries
@@ -114,7 +114,10 @@ struct OverlayView: View {
       // frozen pill. The orb itself doesn't move across the hand-off — only
       // what's beside it changes — which is what makes the pill read as one
       // surface progressing rather than three unrelated states.
-      waitingContent("Transcribing")
+      waitingContent("Распознаю")
+        .transition(.opacity)
+    case .normalizing:
+      waitingContent("Обрабатываю")
         .transition(.opacity)
     case .error(let message):
       // "Try again" tells the user what to do; the full failure reason is too
@@ -127,7 +130,7 @@ struct OverlayView: View {
       // and brand green) so the processing → pasted hand-off reads as one
       // continuous status line rather than a new kind of alert. No glyph — the
       // word alone carries it. Hover still exposes the full announcement text.
-      StatusLineText("Pasted")
+      StatusLineText("Вставлено")
         .transition(.opacity)
         .help(state.accessibilityLabel)
     case .noTarget:
@@ -136,7 +139,7 @@ struct OverlayView: View {
       // (same status-line type and brand green) so it reads as info, not the red
       // error flash. No glyph — the word alone carries it. Hover still exposes
       // the full announcement text.
-      StatusLineText("Copied")
+      StatusLineText("Скопировано")
         .transition(.opacity)
         .help(state.accessibilityLabel)
     }
@@ -168,7 +171,7 @@ struct OverlayView: View {
   /// matters more than before: it stays on hover (`help`) and in the VoiceOver
   /// announcement, both from `OverlayUIState` so the wording lives in one place.
   private func errorPill(help: String) -> some View {
-    StatusLineText("Error", color: BlurtBrand.errorOrange)
+    StatusLineText("Ошибка", color: BlurtBrand.errorOrange)
       .padding(.horizontal, 4)
       .transition(.opacity)
       .help(help)

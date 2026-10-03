@@ -80,14 +80,14 @@ extension APIKeySubmission.Outcome {
     case .valid:
       nil
     case .invalid:
-      .inline(message: "AssemblyAI rejected that key. Double-check it and try again.")
+      .inline(message: "AssemblyAI отклонил ключ. Проверьте его и попробуйте снова.")
     case .unreachable:
-      .inline(message: "Couldn't reach AssemblyAI. Check your connection and try again.")
+      .inline(message: "Не удалось связаться с AssemblyAI. Проверьте интернет и попробуйте снова.")
     case .saveFailed:
       .alert(
-        title: "Couldn’t Save Your Key",
+        title: "Не удалось сохранить ключ",
         message:
-          "Blurt couldn’t write the key to your macOS Keychain. Check Keychain access and try again."
+          "VibeDictate не смог сохранить ключ в связке ключей macOS. Проверьте доступ и попробуйте снова."
       )
     }
   }

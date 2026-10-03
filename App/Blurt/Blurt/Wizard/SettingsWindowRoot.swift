@@ -1,39 +1,37 @@
 import BlurtEngine
 import SwiftUI
 
-/// Root view of the `Settings` scene. A `TabView` at the root of a `Settings`
-/// scene renders as the standard macOS preferences window — a segmented toolbar
-/// of panes (General / Advanced), each sized to its own content. This is the
-/// HIG-native answer to a settings screen that outgrows one pane: keeping every
-/// pane short means the window never has to grow past a small display (a single
-/// stacked `Form` did, stranding the bottom section off-screen). Each pane
-/// reuses the same section views the wizard's setup step uses, so the two stay
-/// in sync.
+/// Settings panes stay short enough to fit on a small display. The explicit
+/// selector keeps all four panes visible and accessible even when AppKit would
+/// collapse a TabView toolbar into an overflow menu.
 struct SettingsWindowRoot: View {
-  var appDelegate: AppDelegate
+  @ObservedObject var appDelegate: AppDelegate
 
-  private enum Tab: Hashable { case general, textShortcuts, advanced }
+  private enum Tab: Hashable { case general, textShortcuts, vibeDictate, advanced }
 
-  /// Drives the selected pane from `@State` (not the OS's persisted preference
-  /// tab), so the window always opens on General. Without an explicit binding
-  /// macOS restores the last-used pane across launches, which retitles the
-  /// window ("General" → "Advanced") and made the settings window unfindable in
-  /// UI tests from one run to the next. The one exception is the main window's
-  /// "+" (add style) deep-link, consumed below.
+  /// Always open on General, except for the main window's "+" deep-link.
   @State private var tab: Tab = .general
 
   var body: some View {
     if let coordinator = appDelegate.coordinator {
-      TabView(selection: $tab) {
-        GeneralSettingsTab(coordinator: coordinator)
-          .tabItem { Label(UITestIdentifiers.generalSettingsTab, systemImage: "gearshape") }
-          .tag(Tab.general)
-        TextShortcutsSection()
-          .tabItem { Label(UITestIdentifiers.textShortcutsTab, systemImage: "text.badge.plus") }
-          .tag(Tab.textShortcuts)
-        AdvancedSettingsTab(coordinator: coordinator, updateModel: appDelegate.updateCheckModel)
-          .tabItem { Label(UITestIdentifiers.advancedSettingsTab, systemImage: "gearshape.2") }
-          .tag(Tab.advanced)
+      VStack(spacing: 0) {
+        HStack(spacing: 4) {
+          tabButton(UITestIdentifiers.generalSettingsTab, .general)
+          tabButton(UITestIdentifiers.textShortcutsTab, .textShortcuts)
+          tabButton("VibeDictate", .vibeDictate)
+          tabButton(UITestIdentifiers.advancedSettingsTab, .advanced)
+        }
+        .padding(12)
+        Divider()
+        Group {
+          switch tab {
+          case .general: GeneralSettingsTab(coordinator: coordinator)
+          case .textShortcuts: TextShortcutsSection()
+          case .vibeDictate: VibeDictateSettingsTab(history: appDelegate.historyModel)
+          case .advanced:
+            AdvancedSettingsTab(coordinator: coordinator, updateModel: appDelegate.updateCheckModel)
+          }
+        }
       }
       .frame(width: MainWindow.contentWidth)
       // Consumes the "+" deep-link (`AppDelegate.settingsOpensOnAdvanced`):
@@ -42,14 +40,31 @@ struct SettingsWindowRoot: View {
       // still opens on General. `initial: true` covers the window being
       // (re)created after the flag was set; the observed change covers an
       // already-open Settings window, which switches panes in place.
-      .onChange(of: appDelegate.settingsOpensOnAdvanced, initial: true) {
-        guard appDelegate.settingsOpensOnAdvanced else { return }
-        tab = .advanced
-        appDelegate.settingsOpensOnAdvanced = false
+      .onAppear { consumeAdvancedDeepLink() }
+      .onChange(of: appDelegate.settingsOpensOnAdvanced) { _ in
+        consumeAdvancedDeepLink()
       }
     } else {
       Color.clear.frame(width: MainWindow.contentWidth, height: 240)
     }
+  }
+
+  private func tabButton(_ title: String, _ destination: Tab) -> some View {
+    Button {
+      tab = destination
+    } label: {
+      Text(title).frame(maxWidth: .infinity)
+    }
+    .buttonStyle(.plain)
+    .padding(.vertical, 7)
+    .background(tab == destination ? Color.accentColor.opacity(0.16) : Color.clear)
+    .clipShape(RoundedRectangle(cornerRadius: 7))
+  }
+
+  private func consumeAdvancedDeepLink() {
+    guard appDelegate.settingsOpensOnAdvanced else { return }
+    tab = .advanced
+    appDelegate.settingsOpensOnAdvanced = false
   }
 }
 
@@ -70,7 +85,7 @@ private struct SettingsPane<Content: View>: View {
 /// The everyday setup a user changes: the AssemblyAI key, the dictation
 /// shortcut, the microphone, the cue sound, and the transcription key terms.
 private struct GeneralSettingsTab: View {
-  let coordinator: AppCoordinator
+  @ObservedObject var coordinator: AppCoordinator
 
   var body: some View {
     SettingsPane {
@@ -88,8 +103,8 @@ private struct GeneralSettingsTab: View {
 /// start-over button.
 /// Kept out of General so the common pane stays short.
 private struct AdvancedSettingsTab: View {
-  let coordinator: AppCoordinator
-  let updateModel: UpdateCheckModel
+  @ObservedObject var coordinator: AppCoordinator
+  @ObservedObject var updateModel: UpdateCheckModel
 
   var body: some View {
     SettingsPane {
@@ -120,15 +135,15 @@ private struct TranscriptionSection: View {
   var body: some View {
     Section {
       Toggle(isOn: $enhancedTranscripts) {
-        Label("Enhanced transcripts", systemImage: "wand.and.stars")
+        Label("Улучшать текст", systemImage: "wand.and.stars")
       }
       .accessibilityIdentifier(UITestIdentifiers.enhancedTranscriptsToggle)
     } header: {
-      Text("Transcription")
+      Text("Распознавание")
     } footer: {
       Text(
-        "Polishes each dictation before pasting — removing filler words and fixing punctuation. "
-          + "Turn off to paste your words exactly as spoken.")
+        "Убирает слова-паразиты и исправляет пунктуацию перед вставкой. "
+          + "Выключите, чтобы вставлять текст без обработки.")
     }
   }
 }
@@ -169,25 +184,25 @@ private struct StyleProfilesSection: View {
       // profile's own stable id, so a rename doesn't rebuild the row.
       ForEach(Array(profiles.enumerated()), id: \.element.id) { index, profile in
         SettingRow(title: profile.name, systemImage: "textformat") {
-          Button("Edit…") { editing = profile }
+          Button("Изменить…") { editing = profile }
             .accessibilityIdentifier(UITestIdentifiers.styleProfileEdit(index))
         }
       }
       // Ellipsis for the same reason as the API-key row's "Connect…": the
       // action needs more input before it completes.
-      Button("Add Style…") { editing = StyleProfile(name: "", instructions: "") }
+      Button("Добавить стиль…") { editing = StyleProfile(name: "", instructions: "") }
         .disabled(profiles.count >= StyleProfileStore.profileLimit)
         .accessibilityIdentifier(UITestIdentifiers.styleProfileAdd)
     } header: {
-      Text("Custom Styles")
+      Text("Стили текста")
     } footer: {
       // The caveat *replaces* the help sentence rather than joining it: with
       // enhanced transcripts off the rewrite a style shapes is discarded
       // unread, so describing the limit is the less useful half.
       Text(
         enhancedTranscripts
-          ? "Up to \(StyleProfileStore.profileLimit) styles."
-          : "Style preferences need enhanced transcripts turned on.")
+          ? "Можно добавить до \(StyleProfileStore.profileLimit) стилей."
+          : "Для стилей включите улучшение текста.")
     }
     .disabled(!enhancedTranscripts)
     .sheet(item: $editing) { profile in
@@ -236,9 +251,9 @@ private struct StyleProfileEditorSheet: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 6) {
-        Text("Custom Style")
+        Text("Стиль текста")
           .font(.headline)
-        Text("Applied while polishing each dictation — casing, tone, emoji use.")
+        Text("Задайте регистр, тон и использование эмодзи при обработке текста.")
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -259,17 +274,17 @@ private struct StyleProfileEditorSheet: View {
   /// is which" has to survive being filled in.
   private var nameField: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text("Name")
+      Text("Название")
         .font(.subheadline.weight(.semibold))
-      TextField("", text: $name, prompt: Text("e.g. Casual"))
+      TextField("", text: $name, prompt: Text("Например: Неформальный"))
         .lineLimit(1)
         .disableAutocorrection(true)
         .focused($nameFocused)
-        .accessibilityLabel("Style name")
+        .accessibilityLabel("Название стиля")
         .accessibilityIdentifier(UITestIdentifiers.styleProfileName)
         // Capped because the name labels a segment of the main window's
         // switcher; counted in characters, which is what that width bounds.
-        .onChange(of: name) {
+        .onChange(of: name) { _ in
           if name.count > StyleProfileStore.nameLimit {
             name = String(name.prefix(StyleProfileStore.nameLimit))
           }
@@ -281,23 +296,23 @@ private struct StyleProfileEditorSheet: View {
   /// the field it measures.
   private var instructionsField: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text("Instructions")
+      Text("Инструкции")
         .font(.subheadline.weight(.semibold))
       // A vertical-axis TextField grows with its content up to `lineLimit`, so
       // there's no faked placeholder over a TextEditor.
       TextField(
         text: $instructions,
-        prompt: Text("e.g. add fitting emojis sparingly, or always write in lowercase"),
+        prompt: Text("Например: иногда добавляй подходящие эмодзи"),
         axis: .vertical
       ) {
-        Text("Instructions")
+        Text("Инструкции")
       }
       .labelsHidden()
       .lineLimit(2...6)
       .font(.body)
       .disableAutocorrection(true)
       .accessibilityIdentifier(UITestIdentifiers.styleProfileInstructions)
-      .onChange(of: instructions) {
+      .onChange(of: instructions) { _ in
         // The dictation API rejects the whole request over its instruction
         // limit, so text past the cap must never be storable.
         if instructions.utf8.count > StyleProfileStore.characterLimit {
@@ -313,21 +328,21 @@ private struct StyleProfileEditorSheet: View {
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .trailing)
         .accessibilityLabel(
-          "\(instructions.utf8.count) of \(StyleProfileStore.characterLimit) characters used")
+          "Использовано \(instructions.utf8.count) из \(StyleProfileStore.characterLimit) символов")
     }
   }
 
   private var buttonRow: some View {
     HStack(spacing: 12) {
       if isExisting {
-        Button("Delete", role: .destructive, action: delete)
+        Button("Удалить", role: .destructive, action: delete)
           .accessibilityIdentifier(UITestIdentifiers.styleProfileDelete)
       }
       Spacer(minLength: 12)
-      Button("Cancel") { dismiss() }
+      Button("Отмена") { dismiss() }
         .keyboardShortcut(.cancelAction)
         .accessibilityIdentifier(UITestIdentifiers.styleProfileCancel)
-      Button("Save", action: save)
+      Button("Сохранить", action: save)
         .glassButtonStyleCompat(prominent: true)
         .keyboardShortcut(.defaultAction)
         .disabled(!canSave)
@@ -371,30 +386,3 @@ private struct StyleProfileEditorSheet: View {
 /// "Check for Updates…" app-menu command and the menu-bar item; all three share
 /// the one `UpdateCheckModel` owned by `AppDelegate`, so a check from any place
 /// runs through the same controller.
-private struct UpdateSection: View {
-  let model: UpdateCheckModel
-
-  var body: some View {
-    Section {
-      // "Blurt 0.1.31" — the label is the engine's (shared with the result
-      // alerts, so the two can't name the version differently).
-      SettingRow(title: model.versionLabel, systemImage: "arrow.triangle.2.circlepath") {
-        HStack(spacing: 8) {
-          // A user-initiated check that can stall on a slow connection needs
-          // visible progress, or the button reads as dead until the result
-          // alert lands. Show a spinner and disable the button while in flight
-          // (the model already ignores a second check) — the native equivalent
-          // of Sparkle's "Checking for updates…".
-          if model.isChecking {
-            ProgressView().controlSize(.small)
-          }
-          Button("Check for Updates") { model.checkForUpdates() }
-            .disabled(model.isChecking)
-            .accessibilityIdentifier(UITestIdentifiers.updateCheck)
-        }
-      }
-    } header: {
-      Text("Updates")
-    }
-  }
-}

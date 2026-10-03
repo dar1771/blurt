@@ -18,14 +18,14 @@ final class MenuBarUITests: BlurtUITestCase {
     statusItem.click()
 
     XCTAssertTrue(
-      app.menuItems["Open Blurt"].waitForExistence(timeout: 5),
+      app.menuItems["Открыть VibeDictate"].waitForExistence(timeout: 5),
       "Status menu should offer 'Open Blurt'")
-    XCTAssertTrue(app.menuItems["Settings…"].exists)
-    XCTAssertTrue(app.menuItems["Quit Blurt"].exists)
+    XCTAssertTrue(app.menuItems["Настройки…"].exists)
+    XCTAssertTrue(app.menuItems["Завершить VibeDictate"].exists)
 
     // The otherwise-invisible lone-modifier trigger is spelled out here as the
     // menu's discoverability anchor: "Tap or hold <key> to dictate and paste".
-    let hintPredicate = NSPredicate(format: "title BEGINSWITH %@", "Tap or hold")
+    let hintPredicate = NSPredicate(format: "title BEGINSWITH %@", "Нажмите или удерживайте")
     let hint = app.menuItems.matching(hintPredicate).firstMatch
     XCTAssertTrue(hint.exists, "Status menu should spell out the dictation trigger")
   }

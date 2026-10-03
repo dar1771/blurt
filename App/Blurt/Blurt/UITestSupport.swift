@@ -2,8 +2,8 @@
 
   import AppKit
   import BlurtEngine
+  import Combine
   import Foundation
-  import Observation
   import SwiftUI
 
   // Test scaffolding that lets the XCUITest suite drive the real app against
@@ -45,20 +45,19 @@
   /// transcriber read. Main-actor (the app target's default isolation) because
   /// the UI and `AppCoordinator` both live there; the stubs hop onto the main
   /// actor to touch it.
-  @Observable
-  final class UITestState {
+  final class UITestState: ObservableObject {
     static let shared = UITestState()
 
     /// The transcript the stub transcriber will "recognize". Bound to a text
     /// field in the harness so a test can set the expected paste payload; the
     /// default lives in the shared `UITestIdentifiers` so the suites' assertions
     /// can't drift from it.
-    var cannedTranscript = UITestIdentifiers.defaultCannedTranscript
+    @Published var cannedTranscript = UITestIdentifiers.defaultCannedTranscript
 
     /// What the stub injector last "pasted" — i.e. the text `DictationSession`
     /// handed to `insert`. The harness renders it so a test can read it back and
     /// confirm the transcript flowed through the whole pipeline to injection.
-    private(set) var pastedText = ""
+    @Published private(set) var pastedText = ""
 
     func recordPaste(_ text: String) { pastedText = text }
   }
@@ -173,15 +172,26 @@
   }
 
   extension DictationComponents {
-    /// The all-stub pipeline used under UI testing: no mic, no network, no
-    /// Accessibility paste. `UITestMic` inherits `MicCaptureProtocol`'s default
-    /// empty `levels` stream (the overlay meter isn't asserted), no-op
-    /// `warmUp()`, and stop-and-discard `cancelCapture()`.
+    /// The deterministic legacy pipeline used under UI testing: no mic, network,
+    /// or Accessibility paste. Production composition remains VibeDictate.
+    /// Focus capture is an additional test seam: UI-test runners cannot be
+    /// Accessibility-trusted, so they cannot prove a focused element isn't a
+    /// secure field. Supply an explicitly ordinary, content-free test target to
+    /// preserve production's fail-closed behavior while making the Recent path
+    /// observable. No credentials or user text are involved.
     static func uiTest() -> DictationComponents {
       DictationComponents(
         mic: UITestMic(),
         transcriber: UITestTranscriber(),
-        injector: UITestInjector()
+        injector: UITestInjector(),
+        vibePipeline: nil,
+        focusContextProvider: {
+          // No field text is needed. The synthetic label makes this explicit
+          // non-secure fixture context survive the engine's empty-snapshot
+          // collapse so the integration path can update Recent deterministically.
+          TranscriptionContext(
+            appName: "UI Test", fieldLabel: "Test destination", priorText: nil)
+        }
       )
     }
   }
@@ -194,17 +204,14 @@
   /// everything the XCUITest suite needs to observe the record → transcribe →
   /// paste flow deterministically.
   struct UITestHarnessView: View {
-    var appDelegate: AppDelegate
+    @ObservedObject var appDelegate: AppDelegate
+    @ObservedObject private var state = UITestState.shared
     @Environment(\.openWindow) private var openWindow
 
     private var coordinator: AppCoordinator? { appDelegate.coordinator }
 
     var body: some View {
-      // Local `@Bindable` over the shared observable — the pattern for binding to
-      // an `@Observable` that isn't owned by `@State`. `body` is main-actor
-      // isolated, so reaching the `@MainActor` singleton here is safe.
-      @Bindable var state = UITestState.shared
-      return VStack(alignment: .leading, spacing: 12) {
+      VStack(alignment: .leading, spacing: 12) {
         Text("Blurt UI Test Harness")
           .font(.headline)
 
@@ -230,6 +237,8 @@
         // lone-modifier CGEvent (which needs Accessibility trust the test host
         // lacks). Press then Release is a hold, so it records then transcribes.
         HStack(spacing: 8) {
+          Button("Open Settings") { appDelegate.openSettings() }
+            .accessibilityIdentifier(UITestIdentifiers.openSettingsButton)
           Button("Hotkey Press") { coordinator?.simulateDictationPressForTesting() }
             .accessibilityIdentifier(UITestIdentifiers.hotkeyPressButton)
           Button("Hotkey Release") { coordinator?.simulateDictationReleaseForTesting() }

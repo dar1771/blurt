@@ -42,6 +42,6 @@ struct TriggerActivationTests {
     // existed — the unset experience must not reword itself.
     #expect(
       TriggerActivation.tapOrHold.guidance
-        == "Tap to start and tap again to stop, or hold the key and release to dictate.")
+        == "Нажмите для начала и повторно для остановки либо удерживайте во время речи.")
   }
 }
