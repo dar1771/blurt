@@ -7,6 +7,26 @@ import Foundation
   enum DebugFileTranscription {
     static func runIfRequested() -> Bool {
       let arguments = ProcessInfo.processInfo.arguments
+      if let option = arguments.firstIndex(of: "--normalize-file"),
+        arguments.indices.contains(option + 1)
+      {
+        let textURL = URL(fileURLWithPath: arguments[option + 1])
+        Task {
+          do {
+            let raw = try String(contentsOf: textURL, encoding: .utf8)
+            let result = try await OpenRouterTextNormalizer(
+              apiKeyProvider: { OpenRouterAPIKeyStore.current }
+            ).normalizeWithMetadata(rawTranscript: raw, vocabulary: VocabularyStore().terms)
+            FileHandle.standardOutput.write(
+              Data(("[\(result.model ?? "unknown")]\n" + result.text + "\n").utf8))
+            exit(EXIT_SUCCESS)
+          } catch {
+            FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
+            exit(EXIT_FAILURE)
+          }
+        }
+        return true
+      }
       guard let option = arguments.firstIndex(of: "--transcribe-file"),
         arguments.indices.contains(option + 1)
       else { return false }
@@ -14,7 +34,7 @@ import Foundation
       Task {
         do {
           let text = try await AssemblyAILongTranscriber().transcribe(
-            audioFileURL: audioURL, vocabulary: [])
+            audioFileURL: audioURL, vocabulary: VocabularyStore().terms)
           FileHandle.standardOutput.write(Data((text + "\n").utf8))
           exit(EXIT_SUCCESS)
         } catch {
