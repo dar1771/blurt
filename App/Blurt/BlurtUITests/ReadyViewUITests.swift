@@ -14,12 +14,11 @@ final class ReadyViewUITests: BlurtUITestCase {
   func testReadyScreenShowsShortcutAndRecent() {
     mainWindow()
 
-    // The shortcut readout: the tap line with the default key spelled out,
-    // over the hold line. One static text apiece — the key name is bolded
-    // inline, not a separate element.
+    // Both dictation routes are visible with their default keys.
     XCTAssertTrue(
-      app.staticTexts["Нажмите правую Command (⌘) для записи."].waitForExistence(timeout: 10),
-      "Ready screen should state the dictation shortcut")
+      app.staticTexts["Быстро: правую Command (⌘). Точно: правую Option (⌥)."]
+        .waitForExistence(timeout: 10),
+      "Ready screen should state both dictation shortcuts")
     XCTAssertTrue(app.staticTexts["Ещё раз — стоп. Или удерживайте во время речи."].exists)
 
     // The style row is always present — with no custom styles yet its pop-up
