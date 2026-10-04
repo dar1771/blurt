@@ -80,12 +80,12 @@ public struct OpenRouterTranscriber: LongSTTClient {
   struct Response: Decodable { let text: String }
 }
 
-public enum OpenRouterTranscriptionError: Error, LocalizedError, Sendable {
+enum OpenRouterTranscriptionError: Error, LocalizedError, Sendable {
   case missingAPIKey
   case httpStatus(Int)
   case emptyResponse
 
-  public var errorDescription: String? {
+  var errorDescription: String? {
     switch self {
     case .missingAPIKey: "Добавьте ключ OpenRouter в настройках VibeDictate."
     case .httpStatus(let status): "Ошибка распознавания OpenRouter: код \(status)."
