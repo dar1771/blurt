@@ -3,6 +3,17 @@
 The canonical agent guide for this repository. `CLAUDE.md` is a shim that points here; it also maps
 the Claude-Code-specific tooling under `.claude/` (hooks, skills, subagents).
 
+## Завершение этапа в Codex
+
+Для завершения рабочего этапа и передачи в новый контекст прочитай локальный
+[скилл «Финал»](/Users/vadimhohlov/Desktop/Проекты клод/skills/final/SKILL.md).
+Этот проект находится вне Workspace «Проекты клод», поэтому его корневой
+`AGENTS.md` и перечень навыков автоматически сюда не подключаются. Если файл
+скилла недоступен, сохрани проверенное состояние в проекте и прямо укажи,
+какие шаги протокола выполнить не удалось. Процент заполнения контекста не
+выдумывай: используй только доступный замер. Текущие факты о реализации,
+проверках и следующем шаге сохраняй в передаче, а не в этом файле.
+
 ## Start here
 
 Blurt is a macOS dictation app powered by [AssemblyAI](https://www.assemblyai.com). Tap or hold a

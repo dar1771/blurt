@@ -76,7 +76,10 @@ final class TextShortcutsUITests: BlurtUITestCase {
   }
 
   private func type(_ text: String, into identifier: String, in sheet: XCUIElement) {
-    let field = sheet.anyDescendant(identified: identifier)
+    // SwiftUI recreates the sheet's accessibility subtree as the first field
+    // changes. Query from the app root so the second field is not tied to the
+    // pre-edit sheet snapshot.
+    let field = app.anyDescendant(identified: identifier)
     XCTAssertTrue(field.waitForExistence(timeout: 5), "Field \(identifier) not found")
     field.click()
     field.typeText(text)
