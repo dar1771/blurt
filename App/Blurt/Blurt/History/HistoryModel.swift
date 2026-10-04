@@ -1,3 +1,4 @@
+import AVFoundation
 import AppKit
 import BlurtEngine
 import Combine
@@ -15,7 +16,12 @@ final class HistoryModel: ObservableObject {
   private var cleanupTask: Task<Void, Never>?
   private var persistenceTail: Task<Void, Never>?
   let historyInjector = KeyInjector(pasteSettleDuration: .milliseconds(450))
-  var playingSound: NSSound?
+  @Published var playingRecordID: UUID?
+  @Published var playbackSeconds: TimeInterval = 0
+  @Published var playbackDuration: TimeInterval = 0
+  @Published var isPlaying = false
+  var audioPlayer: AVAudioPlayer?
+  var playbackTask: Task<Void, Never>?
   private var generation: UInt64 = 0
   var activeRecord: DictationRecord?
   private var pendingRecords: [UUID: DictationRecord] = [:]
@@ -26,6 +32,7 @@ final class HistoryModel: ObservableObject {
   }
 
   deinit {
+    playbackTask?.cancel()
     cleanupTask?.cancel()
     persistenceTail?.cancel()
   }

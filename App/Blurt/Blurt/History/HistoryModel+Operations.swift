@@ -1,12 +1,9 @@
+import AVFoundation
 import AppKit
 import BlurtEngine
 
 extension HistoryModel {
   var injector: KeyInjector { historyInjector }
-  var sound: NSSound? {
-    get { playingSound }
-    set { playingSound = newValue }
-  }
 
   func insertLast() {
     Task {
@@ -45,12 +42,63 @@ extension HistoryModel {
     message = "Текст скопирован."
   }
 
-  func play(_ record: DictationRecord) {
+  func togglePlayback(_ record: DictationRecord) {
+    if playingRecordID == record.id {
+      guard let audioPlayer else { return }
+      if audioPlayer.isPlaying {
+        audioPlayer.pause()
+        isPlaying = false
+      } else {
+        isPlaying = audioPlayer.play()
+      }
+      return
+    }
+    stopPlayback()
     guard let path = record.audioRelativePath,
       let url = try? Self.applicationSupportURL().appending(path: path)
     else { return }
-    sound = NSSound(contentsOf: url, byReference: true)
-    sound?.play()
+    do {
+      let player = try AVAudioPlayer(contentsOf: url)
+      player.prepareToPlay()
+      audioPlayer = player
+      playingRecordID = record.id
+      playbackDuration = player.duration
+      isPlaying = player.play()
+      playbackTask = Task { [weak self] in
+        while !Task.isCancelled {
+          try? await Task.sleep(for: .milliseconds(200))
+          guard !Task.isCancelled else { return }
+          self?.refreshPlayback()
+        }
+      }
+    } catch {
+      message = "Не удалось открыть аудио: \(error.localizedDescription)"
+    }
+  }
+
+  func seekPlayback(to seconds: TimeInterval) {
+    guard let audioPlayer else { return }
+    audioPlayer.currentTime = min(max(seconds, 0), audioPlayer.duration)
+    playbackSeconds = audioPlayer.currentTime
+  }
+
+  func stopPlayback() {
+    playbackTask?.cancel()
+    playbackTask = nil
+    audioPlayer?.stop()
+    audioPlayer = nil
+    playingRecordID = nil
+    playbackSeconds = 0
+    playbackDuration = 0
+    isPlaying = false
+  }
+
+  private func refreshPlayback() {
+    guard let audioPlayer else { return }
+    playbackSeconds = audioPlayer.currentTime
+    if isPlaying && !audioPlayer.isPlaying {
+      stopPlayback()
+    }
   }
 
   func showAudioFile(_ record: DictationRecord) {
@@ -61,6 +109,7 @@ extension HistoryModel {
   }
 
   func delete(_ record: DictationRecord) {
+    if playingRecordID == record.id { stopPlayback() }
     Task {
       do {
         if let path = record.audioRelativePath,
@@ -76,6 +125,7 @@ extension HistoryModel {
   }
 
   func clearHistory() {
+    stopPlayback()
     Task {
       do {
         for record in try await historyStore?.all() ?? [] {
