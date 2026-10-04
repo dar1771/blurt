@@ -44,6 +44,7 @@ struct MenuBarContent: View {
       // frontmost (the menu bar item can be clicked while another app is active).
       appDelegate.surfaceMainWindow()
     }
+    Button("История и аудио") { appDelegate.openHistory() }
     if #available(macOS 14, *) {
       SettingsMenuButton(appDelegate: appDelegate)
     } else {

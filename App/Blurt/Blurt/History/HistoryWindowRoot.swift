@@ -66,7 +66,10 @@ struct HistoryWindowRoot: View {
           if record.status == .failed, record.audioRelativePath != nil {
             Button("Повторить распознавание") { model.retryTranscription(record) }
           }
-          if record.audioRelativePath != nil { Button("Воспроизвести") { model.play(record) } }
+          if record.audioRelativePath != nil {
+            Button("Воспроизвести") { model.play(record) }
+            Button("Показать аудиофайл") { model.showAudioFile(record) }
+          }
           Spacer()
           Button("Удалить", role: .destructive) { model.delete(record) }
         }

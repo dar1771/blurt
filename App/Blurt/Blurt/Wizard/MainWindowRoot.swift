@@ -67,6 +67,7 @@ struct MainWindowRoot: View {
           ReadyView(
             coordinator: coordinator,
             openSettings: { appDelegate.openSettings() },
+            openHistory: { appDelegate.openHistory() },
             editStyles: {
               appDelegate.settingsOpensOnAdvanced = true
               appDelegate.openSettings()

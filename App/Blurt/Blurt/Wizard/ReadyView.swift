@@ -9,6 +9,7 @@ import SwiftUI
 struct ReadyView: View {
   @ObservedObject var coordinator: AppCoordinator
   var openSettings: () -> Void
+  var openHistory: () -> Void
   /// The style row's "+": opens Settings deep-linked to the Advanced pane,
   /// where styles are edited — a separate closure from `openSettings` so the
   /// plain Settings button keeps opening on General (see `MainWindowRoot`).
@@ -72,17 +73,18 @@ struct ReadyView: View {
       // rows tall.
       RecentDictationsSection(entries: coordinator.recentDictations.displayed)
 
-      Button(action: openSettings) {
-        Label("Настройки", systemImage: "gearshape")
-          .labelStyle(.titleAndIcon)
-          .symbolRenderingMode(.hierarchical)
+      HStack {
+        Button(action: openHistory) {
+          Label("История и аудио", systemImage: "waveform")
+        }
+        .glassButtonStyleCompat()
+        Button(action: openSettings) {
+          Label("Настройки", systemImage: "gearshape")
+        }
+        .glassButtonStyleCompat(prominent: true)
       }
-      // The system Liquid Glass button — hover/press chrome, edge highlights,
-      // and accessibility fallbacks come from the style, not hand-rolled fills.
-      // Prominent, so it takes the brand-green fill the design gives it: it's
-      // the only button on the window's closing line.
-      // Falls back to `.borderedProminent` on macOS 15–25 (see glassButtonStyleCompat).
-      .glassButtonStyleCompat(prominent: true)
+      .labelStyle(.titleAndIcon)
+      .symbolRenderingMode(.hierarchical)
 
       // The window's footer: a caption-level "Powered by AssemblyAI" line,
       // centered on the window's closing edge. A sibling of the sections

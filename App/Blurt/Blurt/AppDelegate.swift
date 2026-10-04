@@ -46,7 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
   /// Brings the main window forward (showing the wizard or the ready screen).
   func openMainWindow() { openWindowByID?(MainWindow.id) }
 
-  func openHistory() { openWindowByID?(HistoryWindow.id) }
+  func openHistory() {
+    activateApp()
+    openWindowByID?(HistoryWindow.id)
+  }
 
   func activateApp() {
     if #available(macOS 14, *) {

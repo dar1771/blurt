@@ -53,6 +53,13 @@ extension HistoryModel {
     sound?.play()
   }
 
+  func showAudioFile(_ record: DictationRecord) {
+    guard let path = record.audioRelativePath,
+      let url = try? Self.applicationSupportURL().appending(path: path)
+    else { return }
+    NSWorkspace.shared.activateFileViewerSelecting([url])
+  }
+
   func delete(_ record: DictationRecord) {
     Task {
       do {
