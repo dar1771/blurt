@@ -14,10 +14,11 @@ final class ReadyViewUITests: BlurtUITestCase {
   func testReadyScreenShowsShortcutAndRecent() {
     mainWindow()
 
-    // Both dictation routes are visible with their default keys.
+    // The picker can swap the two keys, so accept either saved binding.
+    let commandFast = app.staticTexts["Быстро: правую ⌘. Точно: правую ⌥."]
+    let optionFast = app.staticTexts["Быстро: правую ⌥. Точно: правую ⌘."]
     XCTAssertTrue(
-      app.staticTexts["Быстро: правую Command (⌘). Точно: правую Option (⌥)."]
-        .waitForExistence(timeout: 10),
+      commandFast.waitForExistence(timeout: 3) || optionFast.waitForExistence(timeout: 7),
       "Ready screen should state both dictation shortcuts")
     XCTAssertTrue(app.staticTexts["Ещё раз — стоп. Или удерживайте во время речи."].exists)
 

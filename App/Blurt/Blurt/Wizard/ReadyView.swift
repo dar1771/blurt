@@ -178,26 +178,15 @@ struct ReadyView: View {
   /// Where the "Powered by AssemblyAI" footer link points.
   private static let poweredByURL = URL(string: "https://www.assemblyai.com/blurt")
 
-  /// The idle readout: "Tap **Right Command (⌘)** to start and stop." over
-  /// "Or hold it to talk, then release." — the key spelled out and bolded
-  /// inline (`TriggerKey.fullName`), no keycap chip. Static on purpose: which
-  /// style is in effect is the Style row's job to say — its selected button
-  /// is always visible right below — so repeating it here would be two
-  /// readouts to keep in agreement. Both lines take their ideal size: inside
-  /// the fixed-height slot a squeezed line can't fall back to wrapping, so
-  /// without this the slightest width shortfall rendered as a truncated key
-  /// name ("right…").
+  /// Both trigger keys fit on one line; the second line explains tap/hold.
   private var shortcutReadout: some View {
     VStack(spacing: 2) {
-      (Text("Быстро: ") + Text(triggerKey.fullName).bold()
-        + Text(". Точно: ")
-        + Text(
-          triggerKey == .rightCommand
-            ? TriggerKey.rightOption.fullName
-            : TriggerKey.rightCommand.fullName
-        ).bold() + Text("."))
-        .statusPrimaryLine()
-        .fixedSize()
+      Text(
+        "Быстро: \(triggerKey.label). Точно: "
+          + "\(triggerKey == .rightCommand ? TriggerKey.rightOption.label : TriggerKey.rightCommand.label)."
+      )
+      .statusPrimaryLine()
+      .fixedSize()
       Text("Ещё раз — стоп. Или удерживайте во время речи.")
         .statusSecondaryLine()
         .fixedSize()
