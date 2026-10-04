@@ -3,6 +3,7 @@ extension DictationSession {
   /// async methods one-to-one; see each method's doc for semantics.
   public enum Command: Sendable {
     case press
+    case pressFast
     case release
     case cancel
     case cancelRecording
@@ -35,7 +36,12 @@ extension DictationSession {
   /// mirrors, so `submit` and direct calls share every guard and race rule.
   func run(_ command: Command) async {
     switch command {
-    case .press: await press()
+    case .press:
+      if phase.isTerminal { fastModeSelected = false }
+      await press()
+    case .pressFast:
+      if phase.isTerminal { fastModeSelected = true }
+      await press()
     case .release: await release()
     case .cancel: await cancel()
     case .cancelRecording: await cancelRecording()

@@ -15,7 +15,7 @@ extension DictationSession {
     } catch {
       if cancelWonRelease() { return }
       let captureError = BlurtError.audioCaptureFailed(underlying: error)
-      if vibePipeline != nil {
+      if activeVibePipeline != nil {
         routingSession?.cancel()
         await localAudioWriter?.cancelAndDelete()
         if var record = currentRecord {

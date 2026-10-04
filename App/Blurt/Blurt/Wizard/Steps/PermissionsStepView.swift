@@ -9,12 +9,6 @@ import SwiftUI
 struct PermissionsStepView: View {
   @ObservedObject var controller: WizardController
 
-  /// Observed rather than read once via `TriggerKeyStore()`: Settings is reachable
-  /// with ⌘, while this page is showing, so a one-shot read left the footer naming
-  /// the old key after a rebind until something else re-rendered the view. Same
-  /// `BoundTriggerKey` as `ReadyView` / `MenuBarScene`.
-  @BoundTriggerKey private var triggerKey
-
   /// Set when the user taps a settings button so the section can show a
   /// "waiting for you to come back" cue until the poll sees the grant.
   @State private var openedAccessibilitySettings = false
@@ -67,7 +61,7 @@ struct PermissionsStepView: View {
         granted: controller.permissions.microphone,
         waiting: "Включите VibeDictate Dev в разделе «Микрофон»…",
         description:
-          "VibeDictate записывает звук только после нажатия \(triggerKey.label)."
+          "VibeDictate записывает звук только после нажатия правой ⌘ или ⌥."
       )
     }
   }

@@ -185,6 +185,7 @@
         transcriber: UITestTranscriber(),
         injector: UITestInjector(),
         vibePipeline: nil,
+        fastVibePipeline: nil,
         focusContextProvider: {
           // No field text is needed. The synthetic label makes this explicit
           // non-secure fixture context survive the engine's empty-snapshot

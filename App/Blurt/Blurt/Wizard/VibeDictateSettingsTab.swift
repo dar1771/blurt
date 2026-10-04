@@ -8,12 +8,28 @@ struct VibeDictateSettingsTab: View {
   @State private var saveMessage: String?
   @AppStorage(OpenRouterModelStore.defaultsKey)
   private var modelID = OpenRouterTextNormalizer.defaultModel
+  @AppStorage(FastTranscriptionModelStore.defaultsKey)
+  private var fastModelID = OpenRouterTranscriber.defaultModel
+  @AppStorage(TriggerKeyStore.defaultsKey)
+  private var fastKeyCode = 0
+
+  private var fastKey: TriggerKey { TriggerKey.fromPersisted(fastKeyCode) }
+  private var qualityKey: TriggerKey {
+    fastKey == .rightCommand ? .rightOption : .rightCommand
+  }
 
   var body: some View {
     Form {
       Section("Сервисы") {
         SecureField("Ключ API OpenRouter", text: $openRouterKey)
-        TextField("Модель OpenRouter", text: $modelID)
+        TextField("Модель быстрого распознавания", text: $fastModelID)
+        Text(
+          "\(fastKey.fullName): распознавание без нормализации. "
+            + "\(qualityKey.fullName): Universal-2 с нормализацией. "
+            + "Клавиши можно поменять местами в разделе «Горячая клавиша»."
+        )
+        .font(.caption).foregroundStyle(.secondary)
+        TextField("Модель нормализации", text: $modelID)
         Button("Сохранить настройки API") { saveAPIs() }
       }
 
@@ -56,6 +72,8 @@ struct VibeDictateSettingsTab: View {
     let keySaved = OpenRouterAPIKeyStore.save(openRouterKey)
     OpenRouterModelStore().save(modelID)
     modelID = OpenRouterModelStore().modelID
+    FastTranscriptionModelStore().save(fastModelID)
+    fastModelID = FastTranscriptionModelStore().modelID
     saveMessage = keySaved ? "Настройки API сохранены." : "Не удалось сохранить ключ OpenRouter."
   }
 

@@ -189,7 +189,13 @@ struct ReadyView: View {
   /// name ("right…").
   private var shortcutReadout: some View {
     VStack(spacing: 2) {
-      (Text("Нажмите ") + Text(triggerKey.fullName).bold() + Text(" для записи."))
+      (Text("Быстро: ") + Text(triggerKey.fullName).bold()
+        + Text(". Точно: ")
+        + Text(
+          triggerKey == .rightCommand
+            ? TriggerKey.rightOption.fullName
+            : TriggerKey.rightCommand.fullName
+        ).bold() + Text("."))
         .statusPrimaryLine()
         .fixedSize()
       Text("Ещё раз — стоп. Или удерживайте во время речи.")

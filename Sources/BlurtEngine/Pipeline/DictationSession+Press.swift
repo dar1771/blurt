@@ -119,7 +119,7 @@ extension DictationSession {
       // The original route has a hard 120-second request ceiling, so it still
       // auto-releases. VibeDictate instead cancels only that short request at
       // 115 seconds; the STTRouter keeps the mic and WAV running for long mode.
-      if vibePipeline == nil {
+      if activeVibePipeline == nil {
         let timeout = maxRecordingSeconds
         let clock = clock
         autoReleaseTask = Task { [weak self] in
@@ -169,7 +169,7 @@ extension DictationSession {
     let captureFrontmost = seams.captureFrontmost
     let captured = await captureFrontmost()
     await injector.setTargetApp(captured.flatMap { FocusCapture.runningApp(for: $0) })
-    if vibePipeline != nil {
+    if activeVibePipeline != nil {
       latestGeneration &+= 1
       currentJob = DictationJob(
         generation: latestGeneration,

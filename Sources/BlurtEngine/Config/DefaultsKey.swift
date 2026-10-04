@@ -50,6 +50,7 @@ enum DefaultsKey: String, CaseIterable {
   case textShortcuts = "TextShortcuts"
   case vocabulary = "Vocabulary"
   case openRouterModel = "OpenRouterModel"
+  case fastTranscriptionModel = "FastTranscriptionModel"
 
   /// The key this case actually reads and writes, under the configured host
   /// identity. A computed property rather than a stored string because the

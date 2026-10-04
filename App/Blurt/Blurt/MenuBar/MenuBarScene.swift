@@ -35,7 +35,9 @@ struct MenuBarContent: View {
   var body: some View {
     // Disabled informational row: the dictation trigger is an invisible lone
     // modifier, so spell it out here as the menu bar's discoverability anchor.
-    Text("Нажмите или удерживайте \(triggerKey.label) для диктовки")
+    Text(
+      "Быстрый режим: \(triggerKey.label). Точный режим: \(triggerKey == .rightCommand ? TriggerKey.rightOption.label : TriggerKey.rightCommand.label)."
+    )
 
     Divider()
 

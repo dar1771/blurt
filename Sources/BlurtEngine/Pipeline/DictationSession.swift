@@ -47,6 +47,11 @@ public actor DictationSession {
   /// VibeDictate's dual-route pipeline. Nil keeps the original Blurt pipeline
   /// available to package embedders and its focused unit tests.
   let vibePipeline: VibeDictationPipeline?
+  let fastVibePipeline: VibeDictationPipeline?
+  var fastModeSelected = false
+  var activeVibePipeline: VibeDictationPipeline? {
+    fastModeSelected ? fastVibePipeline ?? vibePipeline : vibePipeline
+  }
   /// Supplies the user's key terms (domain vocabulary) at press time, so each
   /// utterance's request boosts those spellings — as its own `keyterms_prompt` field
   /// (`KeytermsBoost`), not as part of the conversation context. A closure, rather
@@ -193,6 +198,7 @@ public actor DictationSession {
     textShortcutsProvider: (@Sendable () -> [TextShortcut])? = nil,
     focusContextProvider: (@Sendable () -> TranscriptionContext?)? = nil,
     vibePipeline: VibeDictationPipeline? = nil,
+    fastVibePipeline: VibeDictationPipeline? = nil,
     readinessCheck: @escaping @Sendable () -> BlurtError? = { nil },
     onTranscriptDelivered: (@Sendable (String, RecentDictations) -> Void)? = nil
   ) {
@@ -202,6 +208,7 @@ public actor DictationSession {
       keyTermsProvider: keyTermsProvider, styleNameProvider: styleNameProvider,
       textShortcutsProvider: textShortcutsProvider,
       focusContextProvider: focusContextProvider, vibePipeline: vibePipeline,
+      fastVibePipeline: fastVibePipeline,
       readinessCheck: readinessCheck,
       onTranscriptDelivered: onTranscriptDelivered, seams: .production)
   }
@@ -223,6 +230,7 @@ public actor DictationSession {
     textShortcutsProvider: (@Sendable () -> [TextShortcut])? = nil,
     focusContextProvider: (@Sendable () -> TranscriptionContext?)? = nil,
     vibePipeline: VibeDictationPipeline? = nil,
+    fastVibePipeline: VibeDictationPipeline? = nil,
     readinessCheck: @escaping @Sendable () -> BlurtError? = { nil },
     onTranscriptDelivered: (@Sendable (String, RecentDictations) -> Void)? = nil,
     seams: Seams
@@ -231,6 +239,7 @@ public actor DictationSession {
     self.transcriber = transcriber
     self.injector = injector
     self.vibePipeline = vibePipeline
+    self.fastVibePipeline = fastVibePipeline
     self.maxRecordingSeconds = maxRecordingSeconds
     self.clock = clock
     self.keyTermsProvider = keyTermsProvider ?? { KeyTermsStore().terms }

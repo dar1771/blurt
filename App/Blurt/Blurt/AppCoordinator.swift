@@ -35,6 +35,7 @@ final class AppCoordinator: ObservableObject {
   private var phaseObserver: Task<Void, Never>?
   private var levelsObserver: Task<Void, Never>?
   var keyTap: DictationKeyTap?
+  var qualityKeyTap: DictationKeyTap?
 
   private let transcriptStream: AsyncStream<RecentDictations>
   private var transcriptObserver: Task<Void, Never>?
@@ -108,18 +109,22 @@ final class AppCoordinator: ObservableObject {
     self.recordStream = recordStream
 
     self.mic = components.mic
-    let vibePipeline = components.vibePipeline.map { pipeline in
-      VibeDictationPipeline(
-        router: pipeline.router, makeAudioWriter: pipeline.makeAudioWriter,
-        normalizer: pipeline.normalizer,
-        normalizationModel: pipeline.normalizationModel,
-        onRecordChanged: { record in
-          recordContinuation.yield(.changed(record))
-        },
-        onRecordDiscarded: { id in
-          recordContinuation.yield(.discarded(id))
-        })
+    let wrapPipeline: (VibeDictationPipeline?) -> VibeDictationPipeline? = { source in
+      source.map { pipeline in
+        VibeDictationPipeline(
+          router: pipeline.router, sttLabel: pipeline.sttLabel,
+          makeAudioWriter: pipeline.makeAudioWriter,
+          normalizer: pipeline.normalizer,
+          normalizationModel: pipeline.normalizationModel,
+          onRecordChanged: { record in
+            recordContinuation.yield(.changed(record))
+          },
+          onRecordDiscarded: { id in
+            recordContinuation.yield(.discarded(id))
+          })
+      }
     }
+    let vibePipeline = wrapPipeline(components.vibePipeline)
     self.session = DictationSession(
       mic: components.mic,
       transcriber: components.transcriber,
@@ -130,6 +135,7 @@ final class AppCoordinator: ObservableObject {
       keyTermsProvider: { VocabularyStore().terms },
       focusContextProvider: components.focusContextProvider,
       vibePipeline: vibePipeline,
+      fastVibePipeline: wrapPipeline(components.fastVibePipeline),
       // A press with no key saved fails fast as .failed(.apiKeyMissing) —
       // before any capture — and render(_:) routes it to the settings window.
       readinessCheck: apiKey.readinessCheck(),
@@ -182,7 +188,7 @@ final class AppCoordinator: ObservableObject {
   private func startDictationDriver() {
     let session = session
     keyTap = DictationKeyTap(
-      onStart: { session.submit(.press) },
+      onStart: { session.submit(.pressFast) },
       onStop: { session.submit(.release) },
       onCancel: { session.submit(.cancel) },
       // Recovery-only teardown; `cancelRecording()`'s doc owns the rationale.
@@ -190,6 +196,14 @@ final class AppCoordinator: ObservableObject {
       onInsertLast: onInsertLast,
       onOpenHistory: onOpenHistory
     )
+    qualityKeyTap = DictationKeyTap(
+      onStart: { session.submit(.press) },
+      onStop: { session.submit(.release) },
+      onCancel: { session.submit(.cancel) },
+      onRecordingDiscarded: { session.submit(.cancelRecording) },
+      keyProvider: {
+        TriggerKeyStore().triggerKey == .rightCommand ? .rightOption : .rightCommand
+      })
     // Deliberately *not* installed here: `CGEvent.tapCreate` for keystrokes is
     // itself what surfaces the system permission prompt, so creating the tap at
     // launch pops that prompt before the user ever reaches the "Grant
@@ -258,6 +272,7 @@ final class AppCoordinator: ObservableObject {
     // only place the key tap is installed. Creating it earlier (e.g. at launch)
     // would surface the permission prompt before onboarding; see `start()`.
     keyTap?.ensureRunning()
+    qualityKeyTap?.ensureRunning()
     // Build the pill controller now (first point it's needed) but leave it
     // hidden; `render(_:)` reveals it on the transition into `.recording`.
     if overlay == nil { overlay = OverlayWindowController() }
@@ -281,8 +296,8 @@ final class AppCoordinator: ObservableObject {
   /// calls this on each tick while the app is ready, so the install keeps being
   /// retried until it lands. No-op once the tap exists.
   func retryKeyTapInstallIfNeeded() {
-    guard let keyTap, !keyTap.isInstalled else { return }
-    keyTap.ensureRunning()
+    if let keyTap, !keyTap.isInstalled { keyTap.ensureRunning() }
+    if let qualityKeyTap, !qualityKeyTap.isInstalled { qualityKeyTap.ensureRunning() }
   }
 
   /// Called when the user rebinds the dictation trigger in the Shortcut picker,
@@ -291,6 +306,7 @@ final class AppCoordinator: ObservableObject {
   /// to re-evaluate here.
   func dictationBindingChanged() {
     keyTap?.refreshBinding()
+    qualityKeyTap?.refreshBinding()
   }
 
   // MARK: - Dictation render
@@ -335,6 +351,7 @@ final class AppCoordinator: ObservableObject {
     // normal flow.
     if phase.isTerminal {
       keyTap?.syncAfterTerminalPhase()
+      qualityKeyTap?.syncAfterTerminalPhase()
     }
   }
 }

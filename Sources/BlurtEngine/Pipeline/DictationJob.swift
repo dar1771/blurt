@@ -26,6 +26,7 @@ public struct VibeDictationPipeline: Sendable {
   public typealias AudioWriterFactory = @Sendable (UUID) throws -> any LocalAudioWriter
 
   public let router: STTRouter
+  public let sttLabel: @Sendable () -> String
   public let makeAudioWriter: AudioWriterFactory
   public let normalizer: (any TextNormalizer)?
   public let normalizationModel: @Sendable () -> String?
@@ -34,6 +35,7 @@ public struct VibeDictationPipeline: Sendable {
 
   public init(
     router: STTRouter,
+    sttLabel: @escaping @Sendable () -> String = { "AssemblyAI Universal-2" },
     makeAudioWriter: AudioWriterFactory? = nil,
     normalizer: (any TextNormalizer)? = nil,
     normalizationModel: @escaping @Sendable () -> String? = { nil },
@@ -41,6 +43,7 @@ public struct VibeDictationPipeline: Sendable {
     onRecordDiscarded: @escaping @Sendable (UUID) -> Void = { _ in }
   ) {
     self.router = router
+    self.sttLabel = sttLabel
     self.makeAudioWriter = makeAudioWriter ?? { try WAVAudioWriter(jobID: $0) }
     self.normalizer = normalizer
     self.normalizationModel = normalizationModel

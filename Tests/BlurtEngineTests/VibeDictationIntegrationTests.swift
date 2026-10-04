@@ -6,6 +6,36 @@ import Testing
 
 @Suite("VibeDictate session integration", .timeLimit(.minutes(1)))
 struct VibeDictationIntegrationTests {
+  @Test("fast command uses OpenRouter route without normalization")
+  func fastRouteWithoutNormalization() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let quality = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        preferAccurateRussian: true),
+      normalizer: IntegrationNormalizer(result: .success("normalized")))
+    let fast = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        preferAccurateRussian: true),
+      sttLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: quality, fastVibePipeline: fast, seams: .offline)
+
+    await session.run(.pressFast)
+    await session.release()
+    await session.awaitPipeline()
+
+    #expect(await session.phase == .pasted)
+    #expect(injector.text == "long raw")
+    #expect(records.values.last?.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(records.values.last?.normalizedTranscript == nil)
+  }
+
   @Test("short route persists every transcript stage under one job id")
   func shortRouteEndToEnd() async {
     let records = IntegrationRecordBox()
@@ -103,7 +133,8 @@ struct VibeDictationIntegrationTests {
     await session.cancel()
     await session.awaitPipeline()
 
-    #expect(await session.phase == .cancelled)
+    let finalPhase = await session.phase
+    #expect(finalPhase == .cancelled)
     #expect(writer.bytes.isEmpty)
     #expect(records.discarded == records.values.first?.id)
     #expect(injector.recordID == nil)

@@ -56,7 +56,7 @@ extension DictationSession {
     // failure, cancel, or a completed paste).
     let pipelineInterval = Self.signposter.beginInterval(Self.pipelineSignpostName)
     defer { Self.signposter.endInterval(Self.pipelineSignpostName, pipelineInterval) }
-    if vibePipeline != nil {
+    if activeVibePipeline != nil {
       await runVibeTranscribeNormalizeInject()
       return
     }
@@ -126,7 +126,7 @@ extension DictationSession {
   /// which is what `resolveCapturedContext` used to guarantee from the release
   /// side, and what a stored copy then needed a repair pass to keep true.
   func startUpload(frames: AsyncStream<Data>) async {
-    if vibePipeline != nil {
+    if activeVibePipeline != nil {
       await startVibeRouting(frames: frames)
       return
     }

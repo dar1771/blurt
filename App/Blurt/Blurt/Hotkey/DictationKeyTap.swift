@@ -41,6 +41,7 @@ final class DictationKeyTap {
   private let onRecordingDiscarded: @Sendable () -> Void
   private let onInsertLast: @MainActor @Sendable () -> Void
   private let onOpenHistory: @MainActor @Sendable () -> Void
+  private let keyProvider: () -> TriggerKey
 
   /// The engine-side event router (keycode relevance, down/up edge dedup, and
   /// the gate's tap/hold state machine — all unit-tested in BlurtEngine).
@@ -70,6 +71,7 @@ final class DictationKeyTap {
     onStop: @escaping @Sendable () -> Void,
     onCancel: @escaping @Sendable () -> Void,
     onRecordingDiscarded: @escaping @Sendable () -> Void,
+    keyProvider: @escaping () -> TriggerKey = { TriggerKeyStore().triggerKey },
     onInsertLast: @escaping @MainActor @Sendable () -> Void = {},
     onOpenHistory: @escaping @MainActor @Sendable () -> Void = {}
   ) {
@@ -79,6 +81,7 @@ final class DictationKeyTap {
     self.onRecordingDiscarded = onRecordingDiscarded
     self.onInsertLast = onInsertLast
     self.onOpenHistory = onOpenHistory
+    self.keyProvider = keyProvider
     // Every half of the binding comes from its store, not a hard-coded
     // `.rightCommand` / `.tapOrHold`: `fromPersisted` owns the unset default, and
     // restating it here is the same mistake `BoundTriggerKey` and `HotkeyStepView`
@@ -86,7 +89,7 @@ final class DictationKeyTap {
     // picker, ready screen, and menu bar all named the new one. `refreshBinding()`
     // re-reads this, but nothing enforces that it runs before the first read of
     // either property (`simulatePressForTesting` reads `router.triggerKeyCode`).
-    let key = TriggerKeyStore().triggerKey
+    let key = keyProvider()
     self.router = DictationKeyRouter(
       triggerKeyCode: key.keyCode, activation: TriggerActivationStore().activation)
     self.triggerFlag = Self.flag(for: key)
@@ -188,7 +191,7 @@ final class DictationKeyTap {
   /// match, so the capture must be cancelled, not left to run out the
   /// auto-release cap.
   func refreshBinding() {
-    let key = TriggerKeyStore().triggerKey
+    let key = keyProvider()
     triggerFlag = Self.flag(for: key)
     let activation = TriggerActivationStore().activation
     if router.rebind(triggerKeyCode: key.keyCode, activation: activation) {

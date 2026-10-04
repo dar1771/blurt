@@ -2,7 +2,7 @@ import Foundation
 
 extension DictationSession {
   func startVibeRouting(frames: AsyncStream<Data>) async {
-    guard let pipeline = vibePipeline, let job = currentJob else { return }
+    guard let pipeline = activeVibePipeline, let job = currentJob else { return }
     var record = DictationRecord(job: job, status: .processing)
     currentRecord = record
     pipeline.onRecordChanged(record)
@@ -37,13 +37,17 @@ extension DictationSession {
     if var record = currentRecord {
       record.pipelineMode = .long
       currentRecord = record
-      vibePipeline?.onRecordChanged(record)
+      activeVibePipeline?.onRecordChanged(record)
     }
     setPhase(.longMode)
   }
 
   func runVibeTranscribeNormalizeInject() async {
-    guard let pipeline = vibePipeline, let route = routingSession,
+    // A cancel can clear the route after release claimed `.transcribing` but
+    // before its pipeline task starts. That is a completed cancellation, not
+    // an upload setup failure.
+    guard phase != .cancelled, !Task.isCancelled else { return }
+    guard let pipeline = activeVibePipeline, let route = routingSession,
       let writer = localAudioWriter, let job = currentJob, var record = currentRecord
     else {
       setPhase(.failed(.sttFailed(underlying: DictationPipelineError.uploadNeverStarted)))
@@ -86,11 +90,11 @@ extension DictationSession {
     var record = initialRecord
     record.pipelineMode = routed.mode
     record.sttProvider =
-      routed.mode == .short ? "AssemblyAI Dictation API" : "AssemblyAI Universal-2"
+      routed.mode == .short ? "AssemblyAI Dictation API" : activeVibePipeline?.sttLabel() ?? "AssemblyAI Universal-2"
     record.rawTranscript = routed.raw
     record.assemblyCleanTranscript = routed.assemblyClean
     currentRecord = record
-    vibePipeline?.onRecordChanged(record)
+    activeVibePipeline?.onRecordChanged(record)
     return record
   }
 
@@ -170,7 +174,7 @@ extension DictationSession {
       if Task.isCancelled { return }
       record.insertionStatus = .inserted
       currentRecord = record
-      vibePipeline?.onRecordChanged(record)
+      activeVibePipeline?.onRecordChanged(record)
       setPhase(.pasted)
     } catch {
       if error is CancellationError || Task.isCancelled { return }
@@ -187,7 +191,7 @@ extension DictationSession {
         }
       }
       currentRecord = record
-      vibePipeline?.onRecordChanged(record)
+      activeVibePipeline?.onRecordChanged(record)
     }
   }
 
@@ -200,7 +204,7 @@ extension DictationSession {
     record.status = .failed
     record.errorMessage = error.localizedDescription
     currentRecord = record
-    vibePipeline?.onRecordChanged(record)
+    activeVibePipeline?.onRecordChanged(record)
     if let blurt = error as? BlurtError {
       setPhase(.failed(blurt))
     } else {
@@ -212,7 +216,7 @@ extension DictationSession {
     guard let job = currentJob else { return }
     routingSession?.cancel()
     let writer = localAudioWriter
-    vibePipeline?.onRecordDiscarded(job.id)
+    activeVibePipeline?.onRecordDiscarded(job.id)
     routingSession = nil
     localAudioWriter = nil
     currentJob = nil

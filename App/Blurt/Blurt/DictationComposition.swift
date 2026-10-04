@@ -7,6 +7,23 @@ import Foundation
   enum DebugFileTranscription {
     static func runIfRequested() -> Bool {
       let arguments = ProcessInfo.processInfo.arguments
+      if let option = arguments.firstIndex(of: "--transcribe-fast-file"),
+        arguments.indices.contains(option + 1)
+      {
+        let audioURL = URL(fileURLWithPath: arguments[option + 1])
+        Task {
+          do {
+            let text = try await OpenRouterTranscriber().transcribe(
+              audioFileURL: audioURL, vocabulary: VocabularyStore().terms)
+            FileHandle.standardOutput.write(Data((text + "\n").utf8))
+            exit(EXIT_SUCCESS)
+          } catch {
+            FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
+            exit(EXIT_FAILURE)
+          }
+        }
+        return true
+      }
       if let option = arguments.firstIndex(of: "--normalize-file"),
         arguments.indices.contains(option + 1)
       {
@@ -59,6 +76,7 @@ struct DictationComponents {
   let transcriber: any TranscriberProtocol
   let injector: any InjectorProtocol
   let vibePipeline: VibeDictationPipeline?
+  let fastVibePipeline: VibeDictationPipeline?
   let focusContextProvider: (@Sendable () -> TranscriptionContext?)?
 
   /// The real pipeline: a fresh `MicCapture`, Russian Universal-2 transcription,
@@ -75,6 +93,11 @@ struct DictationComponents {
         normalizer: OpenRouterTextNormalizer(
           apiKeyProvider: { OpenRouterAPIKeyStore.current }),
         normalizationModel: { OpenRouterModelStore().modelID }),
+      fastVibePipeline: VibeDictationPipeline(
+        router: STTRouter(
+          shortClient: short, longClient: OpenRouterTranscriber(),
+          preferAccurateRussian: true),
+        sttLabel: { "OpenRouter \(FastTranscriptionModelStore().modelID)" }),
       focusContextProvider: nil)
   }
 }

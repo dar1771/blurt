@@ -53,7 +53,7 @@ struct HotkeyStepView: View {
   var body: some View {
     Section {
       PickerSettingRow(
-        title: "Клавиша диктовки", systemImage: "keyboard",
+        title: "Клавиша быстрого режима", systemImage: "keyboard",
         accessibilityID: UITestIdentifiers.hotkeyPicker, selection: selection
       ) {
         ForEach(TriggerKey.allCases, id: \.self) { key in
@@ -75,7 +75,9 @@ struct HotkeyStepView: View {
       // always describes the mode the gate will actually apply. Each variant is
       // no longer than the tap-or-hold sentence shipped here before the picker
       // existed, so the footer never grows the pane.
-      Text(TriggerActivation.fromPersisted(activationRaw).guidance)
+      Text(
+        "Вторая правая клавиша запускает точный режим. "
+          + TriggerActivation.fromPersisted(activationRaw).guidance)
     }
   }
 }
