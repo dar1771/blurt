@@ -60,24 +60,7 @@ struct HistoryWindowRoot: View {
         Text("\(record.pipelineMode.rawValue) · \(record.sttProvider)")
           .font(.caption).foregroundStyle(.secondary)
         if record.audioRelativePath != nil {
-          HStack {
-            Button(model.playingRecordID == record.id && model.isPlaying ? "Пауза" : "Слушать") {
-              model.togglePlayback(record)
-            }
-            Slider(
-              value: Binding(
-                get: { model.playingRecordID == record.id ? model.playbackSeconds : 0 },
-                set: { model.seekPlayback(to: $0) }),
-              in:
-                0...max(
-                  model.playingRecordID == record.id ? model.playbackDuration : 0, 1)
-            )
-            .disabled(model.playingRecordID != record.id)
-            Text(
-              "\(playbackTime(model.playingRecordID == record.id ? model.playbackSeconds : 0)) / \(playbackTime(model.playingRecordID == record.id ? model.playbackDuration : Double(record.durationMs) / 1_000))"
-            )
-            .monospacedDigit().font(.caption)
-          }
+          playbackControls(record)
         }
         HStack {
           Button("Вставить") { model.insert(record) }
@@ -95,6 +78,27 @@ struct HistoryWindowRoot: View {
         if let message = model.message { Text(message).font(.caption) }
       }
       .padding()
+    }
+  }
+
+  private func playbackControls(_ record: DictationRecord) -> some View {
+    HStack {
+      Button(model.playingRecordID == record.id && model.isPlaying ? "Пауза" : "Слушать") {
+        model.togglePlayback(record)
+      }
+      Slider(
+        value: Binding(
+          get: { model.playingRecordID == record.id ? model.playbackSeconds : 0 },
+          set: { model.seekPlayback(to: $0) }),
+        in:
+          0...max(
+            model.playingRecordID == record.id ? model.playbackDuration : 0, 1)
+      )
+      .disabled(model.playingRecordID != record.id)
+      Text(
+        "\(playbackTime(model.playingRecordID == record.id ? model.playbackSeconds : 0)) / \(playbackTime(model.playingRecordID == record.id ? model.playbackDuration : Double(record.durationMs) / 1_000))"
+      )
+      .monospacedDigit().font(.caption)
     }
   }
 

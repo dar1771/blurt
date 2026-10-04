@@ -10,18 +10,7 @@ import Foundation
       if let option = arguments.firstIndex(of: "--transcribe-fast-file"),
         arguments.indices.contains(option + 1)
       {
-        let audioURL = URL(fileURLWithPath: arguments[option + 1])
-        Task {
-          do {
-            let text = try await OpenRouterTranscriber().transcribe(
-              audioFileURL: audioURL, vocabulary: VocabularyStore().terms)
-            FileHandle.standardOutput.write(Data((text + "\n").utf8))
-            exit(EXIT_SUCCESS)
-          } catch {
-            FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
-            exit(EXIT_FAILURE)
-          }
-        }
+        runFastTranscription(at: arguments[option + 1])
         return true
       }
       if let option = arguments.firstIndex(of: "--normalize-file"),
@@ -60,6 +49,21 @@ import Foundation
         }
       }
       return true
+    }
+
+    private static func runFastTranscription(at path: String) {
+      let audioURL = URL(fileURLWithPath: path)
+      Task {
+        do {
+          let text = try await OpenRouterTranscriber().transcribe(
+            audioFileURL: audioURL, vocabulary: VocabularyStore().terms)
+          FileHandle.standardOutput.write(Data((text + "\n").utf8))
+          exit(EXIT_SUCCESS)
+        } catch {
+          FileHandle.standardError.write(Data((error.localizedDescription + "\n").utf8))
+          exit(EXIT_FAILURE)
+        }
+      }
     }
   }
 #endif
