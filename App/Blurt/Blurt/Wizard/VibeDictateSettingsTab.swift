@@ -25,7 +25,8 @@ struct VibeDictateSettingsTab: View {
         TextField("Модель быстрого распознавания", text: $fastModelID)
         Text(
           "\(fastKey.fullName): распознавание без нормализации. "
-            + "\(qualityKey.fullName): Universal-2 с нормализацией. "
+            + "\(qualityKey.fullName): MAI для записей до 115 секунд, "
+            + "Universal-2 для длинных; затем нормализация. "
             + "Клавиши можно поменять местами в разделе «Горячая клавиша»."
         )
         .font(.caption).foregroundStyle(.secondary)

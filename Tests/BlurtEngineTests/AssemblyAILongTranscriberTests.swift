@@ -54,8 +54,8 @@ struct AssemblyAILongTranscriberTests {
     defer { try? FileManager.default.removeItem(at: audio) }
     let rejected = AssemblyAILongTranscriber(
       apiKeyProvider: { "key" },
-      transport: FakeHTTPTransport { _ in (401, Data()) })
-    await #expect(throws: AssemblyAILongError.httpStatus(401)) {
+      transport: FakeHTTPTransport { _ in (401, json(["error": "bad key"])) })
+    await #expect(throws: AssemblyAILongError.httpStatus(401, "bad key")) {
       try await rejected.transcribe(audioFileURL: audio, vocabulary: [])
     }
     let failed = AssemblyAILongTranscriber(

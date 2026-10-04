@@ -24,6 +24,16 @@ public struct RoutedTranscription: Sendable, Equatable {
   public let mode: DictationPipelineMode
   public let raw: String
   public let assemblyClean: String?
+  public let sttProvider: String?
+
+  public init(
+    mode: DictationPipelineMode, raw: String, assemblyClean: String?, sttProvider: String? = nil
+  ) {
+    self.mode = mode
+    self.raw = raw
+    self.assemblyClean = assemblyClean
+    self.sttProvider = sttProvider
+  }
 }
 
 public struct STTRouter: Sendable {
@@ -31,16 +41,25 @@ public struct STTRouter: Sendable {
 
   private let shortClient: any ShortSTTClient
   private let longClient: any LongSTTClient
+  private let shortRecordingClient: (any LongSTTClient)?
+  private let shortRecordingLabel: @Sendable () -> String
+  private let shortRecordingThresholdSeconds: TimeInterval
   private let cutoverDelay: Duration
   private let preferAccurateRussian: Bool
 
   public init(
     shortClient: any ShortSTTClient, longClient: any LongSTTClient,
+    shortRecordingClient: (any LongSTTClient)? = nil,
+    shortRecordingLabel: @escaping @Sendable () -> String = { "" },
+    shortRecordingThresholdSeconds: TimeInterval = STTRouter.shortModeCutoverSeconds,
     cutoverDelay: Duration = .seconds(STTRouter.shortModeCutoverSeconds),
     preferAccurateRussian: Bool = false
   ) {
     self.shortClient = shortClient
     self.longClient = longClient
+    self.shortRecordingClient = shortRecordingClient
+    self.shortRecordingLabel = shortRecordingLabel
+    self.shortRecordingThresholdSeconds = shortRecordingThresholdSeconds
     self.cutoverDelay = cutoverDelay
     self.preferAccurateRussian = preferAccurateRussian
   }
@@ -77,6 +96,9 @@ public struct STTRouter: Sendable {
     return STTRoutingSession(
       shortTask: shortTask, cutoverTask: cutoverTask,
       audioCompletion: fanout.completion, longClient: longClient,
+      shortRecordingClient: shortRecordingClient,
+      shortRecordingLabel: shortRecordingLabel,
+      shortRecordingThresholdSeconds: shortRecordingThresholdSeconds,
       vocabulary: vocabulary, stopShortFeed: { fanout.stopShortFeed() },
       cutoverState: cutoverState, preferAccurateRussian: preferAccurateRussian)
   }
@@ -87,6 +109,9 @@ public final class STTRoutingSession: Sendable {
   private let cutoverTask: Task<Void, Never>
   private let audioCompletion: Task<Void, any Error>
   private let longClient: any LongSTTClient
+  private let shortRecordingClient: (any LongSTTClient)?
+  private let shortRecordingLabel: @Sendable () -> String
+  private let shortRecordingThresholdSeconds: TimeInterval
   private let vocabulary: [String]
   private let stopShortFeed: @Sendable () -> Void
   private let cutoverState: STTCutoverState
@@ -95,6 +120,9 @@ public final class STTRoutingSession: Sendable {
   fileprivate init(
     shortTask: Task<ShortTranscription, any Error>?, cutoverTask: Task<Void, Never>,
     audioCompletion: Task<Void, any Error>, longClient: any LongSTTClient,
+    shortRecordingClient: (any LongSTTClient)?,
+    shortRecordingLabel: @escaping @Sendable () -> String,
+    shortRecordingThresholdSeconds: TimeInterval,
     vocabulary: [String], stopShortFeed: @escaping @Sendable () -> Void,
     cutoverState: STTCutoverState, preferAccurateRussian: Bool
   ) {
@@ -102,6 +130,9 @@ public final class STTRoutingSession: Sendable {
     self.cutoverTask = cutoverTask
     self.audioCompletion = audioCompletion
     self.longClient = longClient
+    self.shortRecordingClient = shortRecordingClient
+    self.shortRecordingLabel = shortRecordingLabel
+    self.shortRecordingThresholdSeconds = shortRecordingThresholdSeconds
     self.vocabulary = vocabulary
     self.stopShortFeed = stopShortFeed
     self.cutoverState = cutoverState
@@ -116,6 +147,18 @@ public final class STTRoutingSession: Sendable {
     {
       shortTask?.cancel()
       stopShortFeed()
+      if durationSeconds < shortRecordingThresholdSeconds, let shortRecordingClient {
+        do {
+          let raw = try await shortRecordingClient.transcribe(
+            audioFileURL: audioFileURL, vocabulary: vocabulary)
+          return RoutedTranscription(
+            mode: .long, raw: raw, assemblyClean: nil,
+            sttProvider: shortRecordingLabel())
+        } catch {
+          if error is CancellationError || Task.isCancelled { throw error }
+          // Keep the established Russian route available if OpenRouter fails.
+        }
+      }
       let raw = try await longClient.transcribe(
         audioFileURL: audioFileURL, vocabulary: vocabulary)
       return RoutedTranscription(mode: .long, raw: raw, assemblyClean: nil)

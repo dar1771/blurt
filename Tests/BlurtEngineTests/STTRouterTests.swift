@@ -23,6 +23,63 @@ struct STTRouterTests {
     #expect(long.calls == 1)
   }
 
+  @Test("accurate short recording uses MAI transcript and identifies its provider")
+  func accurateShortUsesMAI() async throws {
+    let mai = LongClient(raw: "Я работаю со skills в Claude Code.")
+    let assembly = LongClient(raw: "я работаю со скиллс")
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    let session = STTRouter(
+      shortClient: ShortClient(), longClient: assembly,
+      shortRecordingClient: mai,
+      shortRecordingLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+      preferAccurateRussian: true
+    ).start(frames: frames, writer: RoutingAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.finish()
+    let result = try await session.stop(
+      durationSeconds: 4, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
+    #expect(result.raw == "Я работаю со skills в Claude Code.")
+    #expect(result.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(mai.calls == 1)
+    #expect(assembly.calls == 0)
+  }
+
+  @Test("accurate short recording falls back to Universal-2 if MAI fails")
+  func accurateShortFallback() async throws {
+    let mai = LongClient(fails: true)
+    let assembly = LongClient(raw: "Запасной текст")
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    let session = STTRouter(
+      shortClient: ShortClient(), longClient: assembly,
+      shortRecordingClient: mai,
+      preferAccurateRussian: true
+    ).start(frames: frames, writer: RoutingAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.finish()
+    let result = try await session.stop(
+      durationSeconds: 4, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
+    #expect(result.raw == "Запасной текст")
+    #expect(result.sttProvider == nil)
+    #expect(mai.calls == 1)
+    #expect(assembly.calls == 1)
+  }
+
+  @Test("accurate long recording keeps Universal-2")
+  func accurateLongKeepsUniversal2() async throws {
+    let mai = LongClient()
+    let assembly = LongClient(raw: "Длинная запись")
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    let session = STTRouter(
+      shortClient: ShortClient(), longClient: assembly,
+      shortRecordingClient: mai,
+      preferAccurateRussian: true
+    ).start(frames: frames, writer: RoutingAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.finish()
+    let result = try await session.stop(
+      durationSeconds: 116, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
+    #expect(result.raw == "Длинная запись")
+    #expect(mai.calls == 0)
+    #expect(assembly.calls == 1)
+  }
+
   @Test("recordingBelowCutoffUsesDictationAPI")
   func recordingBelowCutoffUsesDictationAPI() async throws {
     let short = ShortClient()
@@ -143,14 +200,21 @@ private final class LongClient: LongSTTClient, Sendable {
   }
   private let state = Mutex(State())
   private let raw: String
-  init(raw: String = "long raw") { self.raw = raw }
+  private let fails: Bool
+  init(raw: String = "long raw", fails: Bool = false) {
+    self.raw = raw
+    self.fails = fails
+  }
   func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
     state.withLock { $0 = State(calls: $0.calls + 1, vocabulary: vocabulary) }
+    if fails { throw ProbeError.failed }
     return raw
   }
   var calls: Int { state.withLock { $0.calls } }
   var vocabulary: [String] { state.withLock { $0.vocabulary } }
 }
+
+private enum ProbeError: Error { case failed }
 
 private final class RoutingAudioWriter: LocalAudioWriter, Sendable {
   var relativePath: String { get async { "Audio/test.wav" } }

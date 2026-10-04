@@ -93,6 +93,8 @@ struct DictationComponents {
       vibePipeline: VibeDictationPipeline(
         router: STTRouter(
           shortClient: short, longClient: AssemblyAILongTranscriber(),
+          shortRecordingClient: OpenRouterTranscriber(),
+          shortRecordingLabel: { "OpenRouter \(FastTranscriptionModelStore().modelID)" },
           preferAccurateRussian: true),
         normalizer: OpenRouterTextNormalizer(
           apiKeyProvider: { OpenRouterAPIKeyStore.current }),

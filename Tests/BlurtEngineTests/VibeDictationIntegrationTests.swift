@@ -6,6 +6,35 @@ import Testing
 
 @Suite("VibeDictate session integration", .timeLimit(.minutes(1)))
 struct VibeDictationIntegrationTests {
+  @Test("accurate short command normalizes MAI text and records the actual STT provider")
+  func accurateShortUsesMAIAndNormalizer() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(),
+        longClient: IntegrationLongClient(raw: "я работаю со скиллс"),
+        shortRecordingClient: IntegrationLongClient(raw: "Я работаю со skills Claude Code."),
+        shortRecordingLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+        preferAccurateRussian: true),
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      normalizer: IntegrationNormalizer(result: .success("Я работаю со skills в Claude Code.")),
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+
+    let final = records.values.last
+    #expect(final?.rawTranscript == "Я работаю со skills Claude Code.")
+    #expect(final?.normalizedTranscript == "Я работаю со skills в Claude Code.")
+    #expect(final?.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(injector.text == "Я работаю со skills в Claude Code.")
+  }
+
   @Test("fast command uses OpenRouter route without normalization")
   func fastRouteWithoutNormalization() async {
     let records = IntegrationRecordBox()
@@ -249,10 +278,13 @@ private struct IntegrationShortClient: ShortSTTClient {
 
 private final class IntegrationLongClient: LongSTTClient, Sendable {
   private let terms = Mutex<[String]>([])
+  private let raw: String
+
+  init(raw: String = "long raw") { self.raw = raw }
 
   func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
     terms.withLock { $0 = vocabulary }
-    return "long raw"
+    return raw
   }
 
   var vocabulary: [String] { terms.withLock { $0 } }

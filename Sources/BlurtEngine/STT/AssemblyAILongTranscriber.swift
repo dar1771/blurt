@@ -67,7 +67,8 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
     request.setUserAgent()
     let (data, response) = try await transport.data(for: request)
     if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-      throw AssemblyAILongError.httpStatus(http.statusCode)
+      let detail = try? JSONDecoder().decode(APIErrorResponse.self, from: data).error
+      throw AssemblyAILongError.httpStatus(http.statusCode, detail)
     }
     return try JSONDecoder().decode(R.self, from: data)
   }
@@ -92,15 +93,18 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
     let text: String?
     let error: String?
   }
+  struct APIErrorResponse: Decodable { let error: String? }
 }
 
 enum AssemblyAILongError: Error, LocalizedError, Sendable, Equatable {
-  case httpStatus(Int)
+  case httpStatus(Int, String?)
   case transcriptionFailed(String?)
 
   var errorDescription: String? {
     switch self {
-    case .httpStatus(let status): "Ошибка AssemblyAI: код \(status)."
+    case .httpStatus(let status, let detail):
+      detail.map { "Ошибка AssemblyAI: код \(status). \($0)" }
+        ?? "Ошибка AssemblyAI: код \(status)."
     case .transcriptionFailed(let message):
       message.map { "Не удалось распознать запись: \($0)" } ?? "Не удалось распознать запись."
     }

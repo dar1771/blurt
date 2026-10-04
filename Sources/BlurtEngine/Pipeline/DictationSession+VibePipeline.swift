@@ -90,7 +90,9 @@ extension DictationSession {
     var record = initialRecord
     record.pipelineMode = routed.mode
     record.sttProvider =
-      routed.mode == .short ? "AssemblyAI Dictation API" : activeVibePipeline?.sttLabel() ?? "AssemblyAI Universal-2"
+      routed.mode == .short
+      ? "AssemblyAI Dictation API"
+      : routed.sttProvider ?? activeVibePipeline?.sttLabel() ?? "AssemblyAI Universal-2"
     record.rawTranscript = routed.raw
     record.assemblyCleanTranscript = routed.assemblyClean
     currentRecord = record
