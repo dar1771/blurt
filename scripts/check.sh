@@ -742,7 +742,10 @@ else
     # leak detector and fails only on leaks attributable to Blurt's own code (the
     # fixed set of system-framework XPC leaks is filtered out). Like the UI suite
     # it needs the GUI session the macos-26 runner provides.
-    bash scripts/leaks.sh
+    bash scripts/leaks.sh || {
+      echo "error: scripts/leaks.sh failed after the UI suite" >&2
+      exit 1
+    }
   else
     echo "==> skipping the UI suite and leak scan (they take over the machine)"
     echo "    CI runs both on every PR and is the authority on them. To run them"

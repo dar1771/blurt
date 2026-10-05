@@ -115,10 +115,13 @@ jobs:
           if [ "$result" -ne 0 ]; then
             # Public check annotations expose the failing test even when the
             # Actions log itself requires a signed-in GitHub session.
-            summary="$(grep -E 'error:|\*\* TEST FAILED|Test Case .* failed|==> failed' \
+            summary="$(grep -E 'error:|\*\* TEST FAILED|Test Case .* failed|==> failed|BUILD FAILED|✗|leaks produced|app exited before' \
               "$RUNNER_TEMP/vibedictate-check.log" | tail -n 20 || true)"
-            if [ -z "$summary" ]; then
-              summary="$(tail -n 20 "$RUNNER_TEMP/vibedictate-check.log")"
+            tail_lines="$(tail -n 24 "$RUNNER_TEMP/vibedictate-check.log")"
+            if [ -n "$summary" ]; then
+              summary="$summary"$'\n'"$tail_lines"
+            else
+              summary="$tail_lines"
             fi
             while IFS= read -r line; do
               line="${line//'%'/'%25'}"
