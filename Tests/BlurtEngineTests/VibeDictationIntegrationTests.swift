@@ -6,29 +6,6 @@ import Testing
 
 @Suite("VibeDictate session integration", .timeLimit(.minutes(1)))
 struct VibeDictationIntegrationTests {
-  @Test("copy-only completion keeps the precise insertion failure in history")
-  func quietInsertionReason() async {
-    let records = IntegrationRecordBox()
-    let injector = StubInjector()
-    await injector.setError(BlurtError.noEditableTarget)
-    let pipeline = VibeDictationPipeline(
-      router: STTRouter(
-        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
-        preferAccurateRussian: true),
-      makeAudioWriter: { _ in IntegrationAudioWriter() },
-      onRecordChanged: { records.append($0) })
-    let session = DictationSession(
-      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
-      injector: injector, vibePipeline: pipeline, seams: .offline)
-    await session.press()
-    await session.release()
-    await session.awaitPipeline()
-    #expect(records.values.last?.status == .ready)
-    #expect(records.values.last?.rawTranscript == "long raw")
-    #expect(records.values.last?.insertionStatus == .targetLost)
-    #expect(records.values.last?.errorMessage == BlurtError.noEditableTarget.localizedDescription)
-    #expect(await session.phase == .noTarget)
-  }
   @Test("failed fast STT retains the OpenRouter provider and saved audio")
   func failedFastProvider() async {
     let records = IntegrationRecordBox()
@@ -278,6 +255,32 @@ struct VibeDictationIntegrationTests {
     #expect(records.values.last?.status == .ready)
     #expect(injector.recordID == nil)
     #expect(await session.phase == .idle)
+  }
+}
+
+extension VibeDictationIntegrationTests {
+  @Test("copy-only completion keeps the precise insertion failure in history")
+  func quietInsertionReason() async {
+    let records = IntegrationRecordBox()
+    let injector = StubInjector()
+    await injector.setError(BlurtError.noEditableTarget)
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        preferAccurateRussian: true),
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+    #expect(records.values.last?.status == .ready)
+    #expect(records.values.last?.rawTranscript == "long raw")
+    #expect(records.values.last?.insertionStatus == .targetLost)
+    #expect(records.values.last?.errorMessage == BlurtError.noEditableTarget.localizedDescription)
+    #expect(await session.phase == .noTarget)
   }
 }
 
