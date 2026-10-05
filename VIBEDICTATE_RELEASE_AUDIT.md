@@ -1,42 +1,54 @@
-# VibeDictate: аудит подготовки релиза
+# VibeDictate: подготовка релиза
 
-Дата: 5 октября 2026. Проверены файлы ветки `codex/vibedictate` в PR [#1](https://github.com/dar1771/blurt/pull/1). Это проверка кода и конфигурации, не пробная подписанная Release-сборка. Релиз не публиковался.
+Дата: 5 октября 2026. Ветка `codex/vibedictate`, PR
+[#1](https://github.com/dar1771/blurt/pull/1). Релиз и merge не выполнялись.
+Это проверка pipeline и конфигурации; подписанная Release-сборка не запускалась.
 
-## Вывод
+## Подготовлено
 
-Текущий release pipeline **не готов выпускать VibeDictate**. Сборка приложения в `App/Blurt/project.yml` использует `app.vibedictate` и отображаемое имя `VibeDictate`, но выпуск, установка, ссылки на скачивание и документация по-прежнему рассчитаны на Blurt. CI `check.sh` подтверждает разработческую сборку; он не выполняет подпись Developer ID, нотариализацию или публикацию.
+- Build создаёт `VibeDictate-<version>.dmg` с `VibeDictate.app` и
+  `VibeDictate-<version>.app.dSYM.zip`. Upload, publish, контрольные суммы и
+  повторная загрузка согласованы. Стабильный файл — `VibeDictate.dmg`.
+- Подпись больше не использует закреплённые сертификат/Team ID прежнего Blurt.
+  Build и install требуют явных проверенных pins VibeDictate. Формат проверяется
+  до доступа к credentials; signer-pin проверяет сертификат готовых артефактов.
+- CI preflight проверяет наличие полного выбранного набора notary secrets,
+  а не только одного поля. Защита `release-build` и `release-publish` сохранена.
+- Установка проверяет bundle ID `app.vibedictate`, версию, подпись, signer-pin
+  и staple до замены приложения, затем проверяет установленную копию.
+- Publish явно адресует `dar1771/blurt` и отвергает другой `origin`: GitHub CLI
+  может выбрать upstream в checkout форка без явного указания репозитория.
+- Reset-script адресует `app.vibedictate*`, сервисы `vibedictate*`, оба API-ключа
+  и диагностические логи VibeDictate. Скрипт не запускался. История и сохранённое
+  аудио остаются; встроенный reset также оставляет OpenRouter key — это явно
+  описано в документации.
+- README, CONTRIBUTING и RELEASE описывают VibeDictate, текущие режимы,
+  локальное хранение, Dev-install и fork release URL. `BlurtEngine`, target,
+  scheme, executable и исходные пути не переименованы.
 
-- `scripts/release-build.sh`: закреплены Developer ID fingerprint и Team ID
-  `B2VQF7Q2QY` прежнего проекта. DMG содержит `Blurt.app`; образ и dSYM
-  называются `Blurt-*`. Перед выпуском нужны Developer ID Application и
-  нотариальные данные команды VibeDictate, проверенные fingerprint/Team ID и
-  артефакты с именем VibeDictate.
-- `.github/workflows/release.yml` и `scripts/release-publish.sh` загружают
-  `Blurt-*` и публикуют `Blurt.dmg`. Имена нужно согласовать в upload, publish,
-  контрольных суммах и повторной загрузке. Нужно проверить защиту окружений
-  `release-build` и `release-publish` в настройках репозитория.
-- `scripts/release-install.sh` ищет в DMG `Blurt.app` и устанавливает
-  `/Applications/Blurt.app`. Нужно устанавливать VibeDictate и проверять его
-  bundle ID, версию, подпись и staple.
-- `scripts/reset-install.sh` удаляет разрешения и ключи старых
-  `dev.alex.blurt*`, не затрагивает `app.vibedictate*`. Нужно обновить bundle ID,
-  имена приложений, сервисы Keychain и каталог логов. Этот скрипт удаляет
-  разрешения и ключи; его нельзя запускать на пользовательском Mac без решения.
-- `README.md`, `CONTRIBUTING.md`, `RELEASE.md` описывают Blurt и содержат
-  ссылки на релизы `AssemblyAI/blurt`, включая скачивание `Blurt.dmg`.
-  В `CONTRIBUTING.md` также устарели bundle ID и путь Dev-приложения. Нужно
-  обновить инструкции для VibeDictate и текущего репозитория. Технические
-  идентификаторы `BlurtEngine`, Xcode target, scheme и пути исходников пока
-  сохраняются.
-- Feed в `Sources/BlurtEngine/HostIdentity.swift` уже указывает на
-  `dar1771/blurt/releases/latest`; `GitHubRelease` выбирает первый `.dmg`.
-  После переименования артефакта нужно проверить обновление приложения на
-  пробном сценарии до выдачи ссылки пользователям.
+## Проверки
 
-Версия в `project.yml` ветки и в `main` репозитория `dar1771/blurt` на дату аудита одинаковая: `0.1.56`. Поэтому один только merge текущего PR не должен запустить автоматический выпуск по правилу изменения версии. Доступ к значениям GitHub secrets и настройкам protected environments этим аудитом не подтверждён. Локальный `security find-identity -v -p codesigning` в текущем окружении не показал действительных подписывающих сертификатов; это не проверяет секреты GitHub Actions.
+Bash-тесты release helpers проверяют обязательные pins и отказ при неправильном
+origin. Локальный `scripts/check.sh` после выхода из ограничений кеша Swift
+прошёл сборку и тесты, но часть линтеров отсутствует; UI/leak локально пропущены.
+Это неполное покрытие, не подтверждение полной CI-проверки текущих изменений.
+Итоговый коммит и результат CI сохраняются в передаче этапа после проверки PR.
 
-## Следующий этап
+## Блокеры настоящего выпуска
 
-1. Завершить оставшиеся сценарии ручной приёмки из `VIBEDICTATE_ACCEPTANCE.md`.
-2. Исправить согласованно release-скрипты, workflow и документацию, проверить `scripts/check.sh` и CI в этом PR.
-3. После настройки Developer ID и нотариальных данных выполнить **только build/sign/notarize dry run** из ветки, скачать DMG и проверить установку на Mac. Публикация релиза и merge требуют отдельного решения пользователя.
+1. Владелец должен подтвердить Developer ID Application и настроить в окружении
+   `release-build` переменные `SIGNING_IDENTITY`, `SIGNING_SHA256`,
+   `SIGNING_TEAM_ID` и соответствующие signing/notary secrets. Значения не
+   угаданы по Apple Development подписи Dev-сборки.
+2. Нужна проверка branch restrictions `release-build` и обязательных reviewers
+   `release-publish` в настройках форка. Их наличие здесь не подтверждено.
+3. Не завершена [ручная приёмка](./VIBEDICTATE_ACCEPTANCE.md), включая запись
+   около 10 минут, полный сбой OpenRouter, смену фокуса, историю/плеер, iPhone
+   и нумерацию. Автоматические UI doubles не подтверждают эти сценарии.
+4. После отдельного решения владельца нужен build/sign/notarize dry run,
+   установка из DMG, проверка разрешений и update-download на реальном Mac.
+   Публикация и merge требуют отдельных решений.
+
+Версия сохранена `0.1.56`. Эта доводка не меняет `project.yml`, не запускает
+release-bump или release и не публикует артефакты. Инструкция по настройке
+сертификата и окружений — [RELEASE.md](./RELEASE.md).

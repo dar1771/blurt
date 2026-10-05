@@ -15,13 +15,11 @@ DERIVED="$BUILD_ROOT/derived"
 STAGE="$BUILD_ROOT/stage"
 ENTITLEMENTS="$APP_DIR/Blurt/Blurt.entitlements"
 
-readonly IDENTITY="602F699488189767137DF15633B967B1371ACD86"
-# SHA-256 fingerprint of the same Developer ID leaf cert as IDENTITY (which is
-# its SHA-1 identity hash, the only format `codesign --sign` accepts). The
-# signer-pin verifies produced artifacts against this stronger digest.
-readonly IDENTITY_SHA256="3FD515692E25B96159AEFA3BEE9643EB4D804CF1B95012EEF0E9B8E3B98F207F"
-readonly TEAM_ID="B2VQF7Q2QY"
-readonly NOTARY_PROFILE="blurt-notary"
+# Explicit VibeDictate certificate pins; no inherited Blurt signer.
+IDENTITY="${VIBEDICTATE_SIGNING_IDENTITY:-}"
+IDENTITY_SHA256="${VIBEDICTATE_SIGNING_SHA256:-}"
+TEAM_ID="${VIBEDICTATE_SIGNING_TEAM_ID:-}"
+readonly NOTARY_PROFILE="vibedictate-notary"
 
 SKIP_CHECKS=0
 SKIP_SMOKE=0
@@ -51,7 +49,7 @@ source "$REPO_ROOT/scripts/release-lib.sh"
 #           If that keychain isn't present — a machine that still keeps the key
 #           in login, or mid-migration — fall through to whatever's already on
 #           the search list so releases keep working.
-SIGNING_KEYCHAIN="${BLURT_SIGNING_KEYCHAIN:-$HOME/Library/Keychains/blurt-signing.keychain-db}"
+SIGNING_KEYCHAIN="${BLURT_SIGNING_KEYCHAIN:-$HOME/Library/Keychains/vibedictate-signing.keychain-db}"
 SIGNING_KEYCHAIN_UNLOCKED=0
 CI_KEYCHAIN=""
 CI_KEYCHAIN_DIR=""
@@ -59,7 +57,7 @@ CI_KEYCHAIN_DIR=""
 # notarytool --keychain args, populated once the signing keychain is unlocked so
 # every notary call resolves the profile from THAT keychain rather than from
 # whatever the search list happens to surface. Without this, a stray duplicate
-# blurt-notary profile in another keychain (e.g. one electron-builder created)
+# vibedictate-notary profile in another keychain (e.g. one electron-builder created)
 # can shadow the intended one, and which profile wins depends on search-list
 # order and lock state — non-deterministic. Empty on machines with no dedicated
 # signing keychain, where we fall back to the search list.
@@ -149,7 +147,7 @@ create_ci_keychain() {
     || die "BLURT_SIGNING_P12_BASE64 is set but BLURT_SIGNING_P12_PASSWORD is not — the .p12 export password is required to import it"
 
   CI_KEYCHAIN_DIR="$(mktemp -d /tmp/blurt-ci-keychain.XXXXXX)" || die "mktemp failed for the ephemeral keychain"
-  CI_KEYCHAIN="$CI_KEYCHAIN_DIR/blurt-signing.keychain-db"
+  CI_KEYCHAIN="$CI_KEYCHAIN_DIR/vibedictate-signing.keychain-db"
   # Random per-run password: it protects a keychain that outlives nothing, so
   # it never has to be known outside this process.
   kc_pw="$(openssl rand -base64 24)" || die "could not generate an ephemeral keychain password"
@@ -203,7 +201,7 @@ delete_ci_keychain() {
 #      API-key access. NOTE: --password puts the secret on notarytool's command
 #      line, readable by other processes on the same host; fine on a throwaway
 #      runner, not something to adopt on a shared machine.
-#   3. The `blurt-notary` keychain profile — the local path, pinned to the
+#   3. The `vibedictate-notary` keychain profile — the local path, pinned to the
 #      dedicated signing keychain when there is one (see NOTARY_KEYCHAIN).
 #
 # NOTARY_AUTH_KIND is the loggable label for whichever path was taken, and it
@@ -303,7 +301,7 @@ smoke_launch() {
   # reactivate the existing one, and `pgrep -x Blurt` can't tell them apart.
   if pgrep -x Blurt >/dev/null; then
     info "smoke test: quitting an already-running Blurt first"
-    osascript -e 'tell application "Blurt" to quit' >/dev/null 2>&1 || true
+    osascript -e 'tell application id "app.vibedictate" to quit' >/dev/null 2>&1 || true
     pkill -x Blurt >/dev/null 2>&1 || true
     sleep 1
   fi
@@ -316,7 +314,7 @@ smoke_launch() {
   fi
   sleep 3
   new="$(new_crashes "$before")"
-  osascript -e 'tell application "Blurt" to quit' >/dev/null 2>&1 || true
+  osascript -e 'tell application id "app.vibedictate" to quit' >/dev/null 2>&1 || true
   sleep 1
   pkill -x Blurt >/dev/null 2>&1 || true
   [ -z "$new" ] || die "smoke test: new crash report(s) after launch: $new"
@@ -326,6 +324,7 @@ smoke_launch() {
 pretty_xcodebuild
 
 step "Preflight"
+require_signing_config
 require_tools --hint='brew install create-dmg if needed' \
   xcodegen xcodebuild xcrun hdiutil codesign spctl create-dmg awk shasum openssl
 
@@ -341,7 +340,7 @@ else
 fi
 
 # Resolve the notary credential only AFTER the keychain work: on the local path,
-# the blurt-notary profile is expected to live in the dedicated signing keychain,
+# the vibedictate-notary profile is expected to live in the dedicated signing keychain,
 # and we pin every notary call to it (see NOTARY_KEYCHAIN) so the lookup is
 # deterministic rather than at the mercy of the search list.
 if [ "$SIGNING_KEYCHAIN_UNLOCKED" -eq 1 ]; then
@@ -424,8 +423,8 @@ info "built: $APP_BUILT ($(du -sh "$APP_BUILT" | cut -f1))"
 
 step "Preserve dSYM"
 DSYM_SRC="$DERIVED/Build/Products/Release/Blurt.app.dSYM"
-DSYM_DST="$BUILD_ROOT/Blurt-$VERSION.app.dSYM"
-DSYM_ZIP="$BUILD_ROOT/Blurt-$VERSION.app.dSYM.zip"
+DSYM_DST="$BUILD_ROOT/VibeDictate-$VERSION.app.dSYM"
+DSYM_ZIP="$BUILD_ROOT/VibeDictate-$VERSION.app.dSYM.zip"
 [ -d "$DSYM_SRC" ] || die "expected dSYM at $DSYM_SRC — build did not produce it"
 rm -rf "$DSYM_DST" "$DSYM_ZIP"
 cp -R "$DSYM_SRC" "$DSYM_DST"
@@ -437,8 +436,8 @@ info "dsym zip: $DSYM_ZIP"
 step "Stage"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
-cp -R "$APP_BUILT" "$STAGE/"
-APP_STAGED="$STAGE/Blurt.app"
+ditto "$APP_BUILT" "$STAGE/VibeDictate.app"
+APP_STAGED="$STAGE/VibeDictate.app"
 
 step "Sign nested code"
 # Re-sign everything inside-out so each nested signature carries the hardened
@@ -480,7 +479,7 @@ info "signature verified with secure timestamp"
 # once a user drags it out to /Applications, so Gatekeeper clears it on first
 # launch even offline. The DMG is notarized + stapled separately below.
 step "Notarize app"
-APP_ZIP="$BUILD_ROOT/Blurt-$VERSION-app.zip"
+APP_ZIP="$BUILD_ROOT/VibeDictate-$VERSION-app.zip"
 rm -f "$APP_ZIP"
 ditto -c -k --keepParent "$APP_STAGED" "$APP_ZIP"
 notarize "$APP_ZIP" "app"
@@ -498,13 +497,13 @@ else
 fi
 
 step "Create DMG"
-DMG="$BUILD_ROOT/Blurt-$VERSION.dmg"
+DMG="$BUILD_ROOT/VibeDictate-$VERSION.dmg"
 rm -f "$DMG"
 create-dmg \
-  --volname "Blurt $VERSION" \
+  --volname "VibeDictate $VERSION" \
   --window-size 540 380 \
   --icon-size 96 \
-  --icon "Blurt.app" 140 180 \
+  --icon "VibeDictate.app" 140 180 \
   --app-drop-link 400 180 \
   --no-internet-enable \
   --format UDZO \
@@ -545,21 +544,24 @@ step "Mount + verify DMG contents"
 # below can't leave the image attached.
 MOUNT_POINT="$(mktemp -d /tmp/blurt-dmg.XXXXXX)"
 hdiutil attach -nobrowse -noverify -mountpoint "$MOUNT_POINT" "$DMG" >/dev/null
-MOUNTED_APP="$MOUNT_POINT/Blurt.app"
-[ -d "$MOUNTED_APP" ] || die "mounted DMG missing Blurt.app"
+MOUNTED_APP="$MOUNT_POINT/VibeDictate.app"
+[ -d "$MOUNTED_APP" ] || die "mounted DMG missing VibeDictate.app"
 xcrun stapler validate "$MOUNTED_APP" >/dev/null
 codesign --verify --strict --deep "$MOUNTED_APP"
 MOUNTED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$MOUNTED_APP/Contents/Info.plist")"
+MOUNTED_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$MOUNTED_APP/Contents/Info.plist")"
+[ "$MOUNTED_ID" = "app.vibedictate" ] || die "unexpected bundle id in DMG: $MOUNTED_ID"
+verify_signer "$MOUNTED_APP" "$IDENTITY_SHA256" "$TEAM_ID"
 [ "$MOUNTED_VERSION" = "$VERSION" ] || die "version mismatch inside DMG: expected $VERSION, got $MOUNTED_VERSION"
 hdiutil detach "$MOUNT_POINT" >/dev/null
 rmdir "$MOUNT_POINT" >/dev/null 2>&1 || true
 MOUNT_POINT=""
-info "dmg contents verified (Blurt.app $MOUNTED_VERSION, signed + stapled)"
+info "dmg contents verified (VibeDictate.app $MOUNTED_VERSION, signed + stapled)"
 
 step "Provenance"
 PROVENANCE="$BUILD_ROOT/build-info.txt"
 {
-  echo "Blurt $VERSION"
+  echo "VibeDictate $VERSION"
   echo "built:        $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "git:          $(git -C "$REPO_ROOT" rev-parse HEAD) ($(git -C "$REPO_ROOT" rev-parse --short HEAD))"
   echo "xcode:        $(xcodebuild -version | tr '\n' ' ')"

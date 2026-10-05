@@ -97,6 +97,29 @@ identity_listed() {
   grep -qF -- "$1"
 }
 
+# Tag pushes and gh release operations must address the same VibeDictate fork.
+release_origin_matches() {
+  case "$1" in
+    https://github.com/dar1771/blurt | https://github.com/dar1771/blurt.git | \
+      git@github.com:dar1771/blurt | git@github.com:dar1771/blurt.git) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Require owner-verified VibeDictate certificate pins before credentials or builds.
+# Pure validation shared by the CI preflight and the local build/install paths.
+require_signing_config() {
+  local identity="${VIBEDICTATE_SIGNING_IDENTITY:-}"
+  local sha256="${VIBEDICTATE_SIGNING_SHA256:-}"
+  local team="${VIBEDICTATE_SIGNING_TEAM_ID:-}"
+  [[ "$identity" =~ ^[[:xdigit:]]{40}$ ]] \
+    || die "configure VIBEDICTATE_SIGNING_IDENTITY (Developer ID SHA-1, 40 hex characters) — see RELEASE.md"
+  [[ "$sha256" =~ ^[[:xdigit:]]{64}$ ]] \
+    || die "configure VIBEDICTATE_SIGNING_SHA256 (leaf SHA-256, 64 hex characters) — see RELEASE.md"
+  [[ "$team" =~ ^[A-Z0-9]{10}$ ]] \
+    || die "configure VIBEDICTATE_SIGNING_TEAM_ID (10 uppercase letters/digits) — see RELEASE.md"
+}
+
 # Signer-pin: die unless codesigned artifact $1 is signed by EXACTLY the expected
 # leaf-certificate SHA-256 fingerprint ($2) and Team ID ($3). Signing with an
 # explicit identity hash already selects the cert, but this verifies the

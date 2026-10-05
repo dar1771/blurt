@@ -1,6 +1,6 @@
 name: release
 
-# Build, sign, notarize, and publish a Blurt release from CI rather than from
+# Build, sign, notarize, and publish a VibeDictate release from CI rather than from
 # the maintainer's Mac. The Developer ID key and the notary credential live in
 # GitHub secrets (see RELEASE.md) instead of one laptop's keychain, so a release
 # no longer depends on who is at which desk.
@@ -192,17 +192,32 @@ jobs:
         # Fail here rather than 25 minutes later at the signing step. Only
         # presence is checked — the values are never echoed.
         env:
+          VIBEDICTATE_SIGNING_IDENTITY: ${{ vars.SIGNING_IDENTITY }}
+          VIBEDICTATE_SIGNING_SHA256: ${{ vars.SIGNING_SHA256 }}
+          VIBEDICTATE_SIGNING_TEAM_ID: ${{ vars.SIGNING_TEAM_ID }}
           P12: ${{ secrets.SIGNING_P12_BASE64 }}
           P12_PASSWORD: ${{ secrets.SIGNING_P12_PASSWORD }}
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: |
           set -euo pipefail
+          REPO_ROOT="$PWD/blurt"
+          # shellcheck disable=SC1091  # sourced from the checkout
+          source "$REPO_ROOT/scripts/release-lib.sh"
+          require_signing_config
           missing=""
           [ -n "$P12" ] || missing="$missing SIGNING_P12_BASE64"
           [ -n "$P12_PASSWORD" ] || missing="$missing SIGNING_P12_PASSWORD"
-          [ -n "$NOTARY_KEY_P8" ] || [ -n "$NOTARY_APPLE_ID" ] \
-            || missing="$missing NOTARY_KEY_P8_BASE64-or-NOTARY_APPLE_ID"
+          if [ -n "$NOTARY_KEY_P8" ]; then
+            [ -n "$NOTARY_KEY_ID" ] || missing="$missing NOTARY_KEY_ID"
+            [ -n "$NOTARY_ISSUER_ID" ] || missing="$missing NOTARY_ISSUER_ID"
+          else
+            [ -n "$NOTARY_APPLE_ID" ] || missing="$missing NOTARY_APPLE_ID"
+            [ -n "$NOTARY_PASSWORD" ] || missing="$missing NOTARY_PASSWORD"
+          fi
           if [ -n "$missing" ]; then
             echo "::error::missing secret(s) on the release-build environment:$missing — see RELEASE.md"
             exit 1
@@ -232,6 +247,9 @@ jobs:
           # Developer ID Application cert + key, exported as a .p12 and
           # base64-encoded. Imported into an ephemeral keychain that is deleted
           # when the script exits.
+          VIBEDICTATE_SIGNING_IDENTITY: ${{ vars.SIGNING_IDENTITY }}
+          VIBEDICTATE_SIGNING_SHA256: ${{ vars.SIGNING_SHA256 }}
+          VIBEDICTATE_SIGNING_TEAM_ID: ${{ vars.SIGNING_TEAM_ID }}
           BLURT_SIGNING_P12_BASE64: ${{ secrets.SIGNING_P12_BASE64 }}
           BLURT_SIGNING_P12_PASSWORD: ${{ secrets.SIGNING_P12_PASSWORD }}
           # Notary credential. The App Store Connect API key is preferred (it is
@@ -261,8 +279,8 @@ jobs:
           # Explicit paths, not the whole build/release tree: derived/ and
           # stage/ are multi-GB build scratch that nothing downstream reads.
           path: |
-            blurt/build/release/Blurt-*.dmg
-            blurt/build/release/Blurt-*.app.dSYM.zip
+            blurt/build/release/VibeDictate-*.dmg
+            blurt/build/release/VibeDictate-*.app.dSYM.zip
             blurt/build/release/SHA256SUMS
             blurt/build/release/build-info.txt
             blurt/build/release/notary-*-log.json
