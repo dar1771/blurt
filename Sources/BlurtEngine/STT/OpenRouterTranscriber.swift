@@ -8,17 +8,22 @@ public struct OpenRouterTranscriber: LongSTTClient {
   private let modelProvider: @Sendable () -> String
   private let transport: any HTTPTransport
   private let endpoint: URL
+  private let sleep: @Sendable (TimeInterval) async throws -> Void
 
   public init(
     apiKeyProvider: @escaping @Sendable () -> String? = { OpenRouterAPIKeyStore.current },
     modelProvider: @escaping @Sendable () -> String = { FastTranscriptionModelStore().modelID },
     transport: any HTTPTransport = URLSession.shared,
-    endpoint: URL = URL(staticString: "https://openrouter.ai/api/v1/audio/transcriptions")
+    endpoint: URL = URL(staticString: "https://openrouter.ai/api/v1/audio/transcriptions"),
+    sleep: @escaping @Sendable (TimeInterval) async throws -> Void = {
+      try await Task.sleep(for: .seconds($0))
+    }
   ) {
     self.apiKeyProvider = apiKeyProvider
     self.modelProvider = modelProvider
     self.transport = transport
     self.endpoint = endpoint
+    self.sleep = sleep
   }
 
   public func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
@@ -44,13 +49,38 @@ public struct OpenRouterTranscriber: LongSTTClient {
               azure: AzureOptions(
                 enhancedMode: EnhancedMode(modelOptions: ModelOptions(transcribeStyle: "clean")),
                 phraseList: PhraseList(phrases: vocabulary)))) : nil))
-    let (data, response) = try await transport.data(for: request)
-    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-      throw OpenRouterTranscriptionError.httpStatus(http.statusCode)
+    return try await send(request)
+  }
+
+  private func send(_ request: URLRequest) async throws -> String {
+    for attempt in 0..<3 {
+      try Task.checkCancellation()
+      let (data, response) = try await transport.data(for: request)
+      if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+        if http.statusCode == 429, attempt < 2 {
+          let delay = Self.retryDelay(http) ?? (attempt == 0 ? 2 : 4)
+          // Do not retry earlier than the provider requested or wait indefinitely.
+          guard delay <= 30 else { throw OpenRouterTranscriptionError.httpStatus(429) }
+          try await sleep(delay)
+          continue
+        }
+        throw OpenRouterTranscriptionError.httpStatus(http.statusCode)
+      }
+      guard let text = try JSONDecoder().decode(Response.self, from: data).text.trimmedNonEmpty()
+      else { throw OpenRouterTranscriptionError.emptyResponse }
+      return text
     }
-    guard let text = try JSONDecoder().decode(Response.self, from: data).text.trimmedNonEmpty()
-    else { throw OpenRouterTranscriptionError.emptyResponse }
-    return text
+    throw OpenRouterTranscriptionError.httpStatus(429)
+  }
+
+  private static func retryDelay(_ response: HTTPURLResponse) -> TimeInterval? {
+    guard let value = response.value(forHTTPHeaderField: "Retry-After") else { return nil }
+    if let seconds = Double(value), seconds.isFinite, seconds >= 0 { return seconds }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
+    return formatter.date(from: value).map { max(0, $0.timeIntervalSinceNow) }
   }
 
   struct Request: Encodable {
@@ -88,6 +118,8 @@ enum OpenRouterTranscriptionError: Error, LocalizedError, Sendable {
   var errorDescription: String? {
     switch self {
     case .missingAPIKey: "Добавьте ключ OpenRouter в настройках VibeDictate."
+    case .httpStatus(429):
+      "OpenRouter временно ограничил запросы (429). Повторите распознавание позже."
     case .httpStatus(let status): "Ошибка распознавания OpenRouter: код \(status)."
     case .emptyResponse: "OpenRouter вернул пустую расшифровку."
     }

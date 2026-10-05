@@ -10,6 +10,7 @@ import Foundation
 final class FakeHTTPTransport: HTTPTransport, Sendable {
   private let responder: @Sendable (URLRequest) -> (Int, Data)
   private let transportError: (any Error & Sendable)?
+  private let headers: [String: String]
   /// Every chunk of the last streamed upload body, concatenated. The streamed
   /// body is observable in a way the old `Data` one never was through a
   /// `URLProtocol` mock, so the multipart framing the transcriber writes can be
@@ -17,14 +18,19 @@ final class FakeHTTPTransport: HTTPTransport, Sendable {
   private let uploaded = Mutex(Data())
 
   /// `responder` maps each request to an HTTP status and JSON body.
-  init(_ responder: @escaping @Sendable (URLRequest) -> (Int, Data)) {
+  init(
+    headers: [String: String] = ["Content-Type": "application/json"],
+    _ responder: @escaping @Sendable (URLRequest) -> (Int, Data)
+  ) {
     self.responder = responder
     self.transportError = nil
+    self.headers = headers
   }
 
   private init(transportError: any Error & Sendable) {
     self.responder = { _ in (500, Data()) }
     self.transportError = transportError
+    self.headers = [:]
   }
 
   /// Every request fails with `error` (simulates offline / DNS / timeout), so a
@@ -61,7 +67,7 @@ final class FakeHTTPTransport: HTTPTransport, Sendable {
         url: url,
         statusCode: status,
         httpVersion: nil,
-        headerFields: ["Content-Type": "application/json"]
+        headerFields: headers
       )
     else { throw URLError(.badURL) }
     return (body, response)

@@ -6,6 +6,28 @@ import Testing
 
 @Suite("VibeDictate session integration", .timeLimit(.minutes(1)))
 struct VibeDictationIntegrationTests {
+  @Test("failed fast STT retains the OpenRouter provider and saved audio")
+  func failedFastProvider() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: FailingFastClient(),
+        preferAccurateRussian: true),
+      sttLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+    #expect(records.values.last?.status == .failed)
+    #expect(records.values.last?.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(records.values.last?.audioRelativePath == "Audio/integration.wav")
+    #expect(injector.recordID == nil)
+  }
   @Test("accurate short command normalizes MAI text and records the actual STT provider")
   func accurateShortUsesMAIAndNormalizer() async {
     let records = IntegrationRecordBox()
@@ -259,6 +281,12 @@ extension DictationSession {
 }
 
 private enum IntegrationFailure: Error, Sendable { case failed }
+
+private struct FailingFastClient: LongSTTClient {
+  func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
+    throw OpenRouterTranscriptionError.httpStatus(429)
+  }
+}
 
 private struct IntegrationShortClient: ShortSTTClient {
   let waitForCancellation: Bool

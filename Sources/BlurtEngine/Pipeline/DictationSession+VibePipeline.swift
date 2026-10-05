@@ -4,6 +4,7 @@ extension DictationSession {
   func startVibeRouting(frames: AsyncStream<Data>) async {
     guard let pipeline = activeVibePipeline, let job = currentJob else { return }
     var record = DictationRecord(job: job, status: .processing)
+    record.sttProvider = pipeline.sttLabel()
     currentRecord = record
     pipeline.onRecordChanged(record)
     do {
