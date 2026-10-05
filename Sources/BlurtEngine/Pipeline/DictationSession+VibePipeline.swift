@@ -95,6 +95,7 @@ extension DictationSession {
       ? "AssemblyAI Dictation API"
       : routed.sttProvider ?? activeVibePipeline?.sttLabel() ?? "AssemblyAI Universal-2"
     record.rawTranscript = routed.raw
+    record.errorMessage = routed.fallbackReason
     record.assemblyCleanTranscript = routed.assemblyClean
     currentRecord = record
     activeVibePipeline?.onRecordChanged(record)
@@ -183,6 +184,8 @@ extension DictationSession {
       if error is CancellationError || Task.isCancelled { return }
       if let blurt = error as? BlurtError, blurt.isQuietDegradation {
         record.insertionStatus = .targetLost
+        record.errorMessage = [record.errorMessage, blurt.localizedDescription]
+          .compactMap { $0 }.joined(separator: "\n")
         setPhase(.noTarget)
       } else {
         record.insertionStatus = .failed

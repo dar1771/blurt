@@ -73,6 +73,14 @@ struct BrowserBundleIDTests {
 /// exactly that reason.
 @Suite("FocusCapture AX-opaque app classification")
 struct AXOpaqueAppTests {
+  @Test("Codex native composer gets the opaque-field exception without widening native apps")
+  func nativeWebEditor() {
+    #expect(FocusCapture.isNativeWebEditorBundleID("com.openai.codex"))
+    for bundleID in ["com.openai.codex.other", "com.apple.finder", "com.apple.TextEdit"] {
+      #expect(!FocusCapture.isNativeWebEditorBundleID(bundleID))
+    }
+    #expect(!FocusCapture.isNativeWebEditorBundleID(nil))
+  }
 
   /// An app bundle skeleton in a temp directory, with the Electron framework
   /// present or absent. Only the *path* matters to the check — nothing is loaded —

@@ -25,14 +25,17 @@ public struct RoutedTranscription: Sendable, Equatable {
   public let raw: String
   public let assemblyClean: String?
   public let sttProvider: String?
+  public let fallbackReason: String?
 
   public init(
-    mode: DictationPipelineMode, raw: String, assemblyClean: String?, sttProvider: String? = nil
+    mode: DictationPipelineMode, raw: String, assemblyClean: String?, sttProvider: String? = nil,
+    fallbackReason: String? = nil
   ) {
     self.mode = mode
     self.raw = raw
     self.assemblyClean = assemblyClean
     self.sttProvider = sttProvider
+    self.fallbackReason = fallbackReason
   }
 }
 
@@ -147,6 +150,7 @@ public final class STTRoutingSession: Sendable {
     {
       shortTask?.cancel()
       stopShortFeed()
+      var fallbackReason: String?
       if durationSeconds < shortRecordingThresholdSeconds, let shortRecordingClient {
         do {
           let raw = try await shortRecordingClient.transcribe(
@@ -157,11 +161,13 @@ public final class STTRoutingSession: Sendable {
         } catch {
           if error is CancellationError || Task.isCancelled { throw error }
           // Keep the established Russian route available if OpenRouter fails.
+          fallbackReason = "Использовано резервное распознавание: \(error.localizedDescription)"
         }
       }
       let raw = try await longClient.transcribe(
         audioFileURL: audioFileURL, vocabulary: vocabulary)
-      return RoutedTranscription(mode: .long, raw: raw, assemblyClean: nil)
+      return RoutedTranscription(
+        mode: .long, raw: raw, assemblyClean: nil, fallbackReason: fallbackReason)
     }
     guard let shortTask else { throw CancellationError() }
     let short = try await shortTask.value

@@ -11,7 +11,9 @@ import CoreGraphics
 // `KeyInjector.swift` can wire them as the defaults across the file boundary.
 extension KeyInjector {
   static func activate(_ app: NSRunningApplication) -> Bool {
-    app.activate()
+    // Preserve the caret when the captured app is already active, and do not
+    // mistake a redundant activation refusal for a lost target.
+    app.isActive || app.activate()
   }
 
   static func waitUntilFrontmost(_ app: NSRunningApplication) async -> Bool {

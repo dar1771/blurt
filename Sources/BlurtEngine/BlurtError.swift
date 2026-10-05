@@ -72,7 +72,7 @@ extension BlurtError: LocalizedError {
     case .sttFailed(let underlying): "Ошибка распознавания: \(underlying.localizedDescription)"
     case .targetAppLost: "Приложение для вставки закрылось или потеряло фокус."
     case .audioCaptureFailed(let underlying): "Ошибка записи звука: \(underlying.localizedDescription)"
-    case .noEditableTarget: "Поле ввода не выбрано. Текст скопирован в буфер обмена."
+    case .noEditableTarget: "Не удалось подтвердить поле ввода. Текст скопирован в буфер обмена."
     }
   }
 }

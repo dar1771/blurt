@@ -104,7 +104,14 @@ extension FocusCapture {
   static func isAXOpaqueApp(_ app: NSRunningApplication?) -> Bool {
     // Browser first: it's a string prefix check, whereas isElectronApp probes
     // the disk (FileManager.fileExists) — skip that I/O for the common case.
-    isBrowserApp(app) || isElectronApp(app)
+    isBrowserApp(app) || isNativeWebEditorBundleID(app?.bundleIdentifier) || isElectronApp(app)
+  }
+
+  /// Codex embeds its composer in a native shell, so it has neither a browser
+  /// bundle ID nor Electron Framework. Its field can still be AX-opaque.
+  /// Match exactly: unrelated native apps retain the editability guard.
+  static func isNativeWebEditorBundleID(_ bundleID: String?) -> Bool {
+    bundleID == "com.openai.codex"
   }
 
   /// Whether the system-wide focused element can accept pasted text right now.

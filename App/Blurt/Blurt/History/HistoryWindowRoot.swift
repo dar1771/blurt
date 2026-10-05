@@ -59,6 +59,9 @@ struct HistoryWindowRoot: View {
         }
         Text("\(record.pipelineMode.rawValue) · \(record.sttProvider)")
           .font(.caption).foregroundStyle(.secondary)
+        if let reason = record.errorMessage {
+          Text(reason).font(.caption).foregroundStyle(.secondary)
+        }
         if record.audioRelativePath != nil {
           playbackControls(record)
         }

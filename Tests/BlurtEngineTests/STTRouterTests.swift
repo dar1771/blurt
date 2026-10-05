@@ -39,6 +39,7 @@ struct STTRouterTests {
       durationSeconds: 4, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
     #expect(result.raw == "Я работаю со skills в Claude Code.")
     #expect(result.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(result.fallbackReason == nil)
     #expect(mai.calls == 1)
     #expect(assembly.calls == 0)
   }
@@ -57,6 +58,7 @@ struct STTRouterTests {
     let result = try await session.stop(
       durationSeconds: 4, audioFileURL: URL(fileURLWithPath: "/tmp/test.wav"))
     #expect(result.raw == "Запасной текст")
+    #expect(result.fallbackReason?.contains(ProbeError.failed.localizedDescription) == true)
     #expect(result.sttProvider == nil)
     #expect(mai.calls == 1)
     #expect(assembly.calls == 1)
