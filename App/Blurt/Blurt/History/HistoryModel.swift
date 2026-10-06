@@ -27,8 +27,10 @@ final class HistoryModel: ObservableObject {
   private var pendingRecords: [UUID: DictationRecord] = [:]
   private var pendingDeletions = Set<UUID>()
 
-  init() {
-    Task { await prepare() }
+  /// The test decision is captured before starting any asynchronous preparation.
+  /// In-memory history must not open or clean the user's persistent history.
+  init(testing: Bool = false) {
+    Task { await prepare(testing: testing) }
   }
 
   deinit {
@@ -116,15 +118,10 @@ final class HistoryModel: ObservableObject {
     }
   }
 
-  private func prepare() async {
+  private func prepare(testing: Bool) async {
     do {
-      let history = try await CoreDataDictationHistoryStore()
+      let history = try await CoreDataDictationHistoryStore(inMemory: testing)
       store = history
-      let support = try Self.applicationSupportURL()
-      let cleaner = RetentionCleaner(
-        history: history,
-        files: ApplicationSupportAudioFileRemover(root: support))
-      self.cleaner = cleaner
       for id in pendingDeletions {
         enqueuePersistence { try await history.delete(id: id) }
       }
@@ -133,16 +130,24 @@ final class HistoryModel: ObservableObject {
       }
       pendingDeletions.removeAll()
       pendingRecords.removeAll()
-      try await cleaner.runIfDue()
-      cleanupTask = Task { [weak self] in
-        while !Task.isCancelled {
-          try? await Task.sleep(for: .seconds(RetentionPolicy.cleanupInterval))
-          guard let self else { return }
-          _ = try? await self.cleaner?.runIfDue()
-        }
-      }
+      if !testing { try await startRetention(history: history) }
       await load()
     } catch { message = error.localizedDescription }
+  }
+
+  private func startRetention(history: any DictationHistoryStore) async throws {
+    let support = try Self.applicationSupportURL()
+    let cleaner = RetentionCleaner(
+      history: history, files: ApplicationSupportAudioFileRemover(root: support))
+    self.cleaner = cleaner
+    try await cleaner.runIfDue()
+    cleanupTask = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .seconds(RetentionPolicy.cleanupInterval))
+        guard let self else { return }
+        _ = try? await self.cleaner?.runIfDue()
+      }
+    }
   }
 
   func load() async {

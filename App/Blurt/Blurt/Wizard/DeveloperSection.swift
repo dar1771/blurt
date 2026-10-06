@@ -71,26 +71,31 @@ struct ResetSection: View {
     /// Only shown when part of the sweep survived. A clean reset says nothing:
     /// the app restarting into setup is the confirmation.
     case failed(InstallReset.AlertContent)
+    case syncFailed(String?)
 
     var title: String {
       switch self {
       case .confirm: "Сбросить VibeDictate?"
       case .failed(let content): content.title
+      case .syncFailed: "Не удалось полностью сбросить VibeDictate"
       }
     }
 
     var message: String {
       switch self {
       case .confirm:
-        "Это действие нельзя отменить. Ключ AssemblyAI, настройки, журналы диктовок и "
+        "Это действие нельзя отменить. Ключ AssemblyAI, код группы и полученные файлы общего буфера, настройки, журналы диктовок и "
           + "разрешения VibeDictate на микрофон и управление компьютером будут удалены.\n\n"
           + "Затем приложение перезапустится и откроет первоначальную настройку."
       case .failed(let content): content.message
+      case .syncFailed(let detail):
+        "Не удалось удалить код группы или полученные файлы общего буфера. " + (detail ?? "Повторите сброс.")
       }
     }
   }
 
   @ObservedObject var coordinator: AppCoordinator
+  @ObservedObject var clipboardModel: ClipboardSyncModel
 
   @State private var prompt: Prompt?
 
@@ -119,9 +124,9 @@ struct ResetSection: View {
         // Deferred a turn: setting `prompt` straight from an alert action
         // re-enters presentation while this alert is still dismissing, and
         // SwiftUI swallows it — so the failure report would never appear.
-        Button("Сбросить и перезапустить", role: .destructive) { Task { @MainActor in reset() } }
+        Button("Сбросить и перезапустить", role: .destructive) { Task { @MainActor in await reset() } }
         Button("Отмена", role: .cancel) {}
-      case .failed:
+      case .failed, .syncFailed:
         Button("ОК", role: .cancel) {}
       }
     } message: { prompt in
@@ -143,7 +148,8 @@ struct ResetSection: View {
   /// `AppDelegate.runAccessibilityGrantMigration` follows). The key is cleared
   /// through the model's own storage seam, so a UI-test run sweeps its in-memory
   /// store instead of the developer's Keychain item.
-  private func reset() {
+  private func reset() async {
+    let syncCleared = await clipboardModel.reset()
     let report = InstallReset(
       bundleID: Bundle.main.bundleIdentifier ?? HostIdentity.current.subsystem,
       keyStore: coordinator.apiKey.storage
@@ -155,6 +161,10 @@ struct ResetSection: View {
     // Nothing to report means the install is clean, and the fresh copy opening
     // on the setup wizard is the whole confirmation — a success alert would only
     // be one more click between the user and the setup they came for.
+    if !syncCleared {
+      prompt = .syncFailed(report?.message)
+      return
+    }
     guard let report else {
       restart()
       return

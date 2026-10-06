@@ -141,6 +141,9 @@ targets:
         LSMinimumSystemVersion: "13.0"
         LSApplicationCategoryType: public.app-category.productivity
         NSMicrophoneUsageDescription: VibeDictate uses your microphone to transcribe your dictation with AssemblyAI.
+        NSLocalNetworkUsageDescription: VibeDictate обменивается буфером с вашими Mac в локальной сети, когда вы включаете синхронизацию.
+        NSBonjourServices:
+          - _vibeclip._tcp
     entitlements:
       path: Blurt/Blurt.entitlements
       properties:

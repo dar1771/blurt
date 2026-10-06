@@ -92,6 +92,17 @@ echo "==> Removing dictation logs ($DICTATION_LOG_DIR/{dictations,errors}.jsonl)
 rm -f "$DICTATION_LOG_DIR/dictations.jsonl" "$DICTATION_LOG_DIR/errors.jsonl"
 rmdir "$DICTATION_LOG_DIR" 2>/dev/null || true
 
+# Clipboard sharing has its own per-app secret and private received-file cache.
+# Match ClipboardSyncStorage.service; never remove unrelated cache directories.
+for bundle_id in "${BUNDLE_IDS[@]}"; do
+  clipboard_service="$bundle_id.clipboard-sync"
+  echo "==> Deleting clipboard group key ($clipboard_service)"
+  security delete-generic-password -s "$clipboard_service" -a "group-key" >/dev/null 2>&1 || true
+  clipboard_cache="$HOME/Library/Caches/$clipboard_service"
+  echo "==> Removing received clipboard files ($clipboard_cache)"
+  rm -rf "$clipboard_cache"
+done
+
 echo "Done. Relaunch VibeDictate for permission prompts to reappear."
 
 # Saved audio and History.sqlite are intentionally retained, like the in-app reset.

@@ -689,15 +689,23 @@ else
   # the app and the engine package, so the log covers both.
   # Removed by the exit trap installed at the top, which owns every exit path.
   APP_BUILD_LOG="$(mktemp -t blurt-build)"
+  # A known path lets the isolated clipboard suites link the app's own engine.
+  APP_CHECK_DERIVED="${TMPDIR:-/tmp}/blurt-check-build"
   xcodebuild \
     -project Blurt.xcodeproj \
     -scheme Blurt \
     -configuration Debug \
     -destination 'platform=macOS' \
+    -derivedDataPath "$APP_CHECK_DERIVED" \
     CODE_SIGN_IDENTITY="-" \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=NO \
     build 2>&1 | tee "$APP_BUILD_LOG" | "${PRETTY[@]}"
+
+  echo "==> clipboard sync shell adapters (isolated pasteboard and temporary files)"
+  "$REPO_ROOT/scripts/clipboard-sync-smoke.sh" "$APP_CHECK_DERIVED"
+  echo "==> UI-test history isolation (in-memory stores only)"
+  "$REPO_ROOT/scripts/history-isolation-smoke.sh" "$APP_CHECK_DERIVED"
 
   # Whole-app integration steps — CI-only by default. Both drive the *real* app,
   # and they don't just need a GUI session, they take one over: the XCUITest

@@ -6,6 +6,22 @@ import XCTest
 /// offline — the API-key submit is short-circuited in UI-test mode, so these
 /// never reach AssemblyAI or the real Keychain.
 final class SettingsUITests: BlurtUITestCase {
+  func testClipboardSharingStartsOffAndTestModeCannotAccessPairingKey() {
+    let settings = openSettingsWindow()
+    let tab = settings.buttons[UITestIdentifiers.clipboardSettingsTab]
+    XCTAssertTrue(tab.waitForExistence(timeout: 5))
+    tab.click()
+    let toggle = settings.checkBoxes[UITestIdentifiers.clipboardSyncToggle]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    XCTAssertFalse(toggle.isEnabled, "Sharing must require an explicitly installed group key")
+    XCTAssertEqual(toggle.value as? Int, 0)
+    let status = settings.staticTexts[UITestIdentifiers.clipboardSyncStatus]
+    XCTAssertTrue(status.exists)
+    XCTAssertEqual(status.label, "Выключено")
+    settings.buttons[UITestIdentifiers.clipboardCreateGroup].click()
+    XCTAssertFalse(toggle.isEnabled, "UI-test mode must never generate a real pairing secret")
+  }
+
   /// Connecting a key dismisses the sheet and leaves the row showing the stored
   /// key's masked tail plus the "Change…" affordance.
   func testConnectingAPIKeyShowsMaskedRow() {

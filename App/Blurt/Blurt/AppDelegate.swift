@@ -9,13 +9,13 @@ import Foundation
 /// / `SettingsWindowRoot`), so this delegate no longer manages any window itself
 /// — it just exposes the models the scenes read and keeps the app alive when the
 /// windows are closed.
-///
-/// `@Observable` so `MainWindowRoot` re-renders when `coordinator` /
-/// `wizardController` are assigned: they're created in `applicationDidFinishLaunching`,
-/// which can land *after* the window scene's first render — without observation
-/// the scene would keep showing its empty fallback and never refresh.
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
-  let historyModel = HistoryModel()
+  #if UITEST_HOOKS
+    let historyModel = HistoryModel(testing: UITestMode.isActive)
+  #else
+    let historyModel = HistoryModel()
+  #endif
+  let clipboardSyncModel = ClipboardSyncModel()
   @Published private(set) var coordinator: AppCoordinator?
   @Published private(set) var wizardController: WizardController?
   private var modelObservations = Set<AnyCancellable>()
@@ -127,6 +127,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // launch), so it's set by the time the hotkey fires.
     // The overlay pill isn't built here — `AppCoordinator` creates it lazily in
     // `showOverlay()` once the app is fully configured.
+    #if UITEST_HOOKS
+      clipboardSyncModel.launch(testing: UITestMode.isActive)
+    #else
+      clipboardSyncModel.launch(testing: false)
+    #endif
     let callbacks = makeHistoryCallbacks()
     let coord = makeCoordinator(callbacks: callbacks)
     let wizard = makeWizardController(coord: coord)

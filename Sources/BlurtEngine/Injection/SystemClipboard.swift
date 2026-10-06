@@ -68,6 +68,8 @@ struct SystemClipboard: ClipboardAccess {
   func writeAndPrepareRestore(_ text: String) -> @Sendable () -> Void {
     let saved = snapshot()
     setString(text)
+    // Clipboard observers must never forward the temporary text used for ⌘V.
+    NSPasteboard.general.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
     // Snapshot the change count our own write produced. If anything else writes
     // to the pasteboard before the restore fires (e.g. the user copies
     // something), the count moves and the restore leaves their newer contents
@@ -90,6 +92,7 @@ struct SystemClipboard: ClipboardAccess {
     pasteboard.clearContents()
     pasteboard.setString(text, forType: .string)
     pasteboard.setString(recordID.uuidString, forType: Self.dictationRecordType)
+    pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
     let ourChangeCount = pasteboard.changeCount
     return { [self] in
       let current = NSPasteboard.general

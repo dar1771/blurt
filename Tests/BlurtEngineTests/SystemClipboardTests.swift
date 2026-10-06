@@ -147,9 +147,30 @@ struct SystemClipboardTests {
       let restore = clip.writeAndPrepareRestore("transcript")
       // The transcript is on the clipboard for the target app's ⌘V to read.
       #expect(pb.string(forType: .string) == "transcript")
+      #expect(pb.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.TransientType")) == true)
 
       restore()
       #expect(pb.string(forType: .string) == "original")
+      #expect(pb.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.TransientType")) == false)
+    }
+  }
+
+  @Test("record-tagged temporary dictation is transient but an ordinary copy is shareable")
+  func recordTaggedDictationIsTransient() {
+    withClipboardRestored {
+      let clipboard = SystemClipboard()
+      let pasteboard = NSPasteboard.general
+      clipboard.write("original")
+      let recordID = UUID()
+      let restore = clipboard.writeAndPrepareRestore("dictation", recordID: recordID)
+      #expect(pasteboard.string(forType: SystemClipboard.dictationRecordType) == recordID.uuidString)
+      #expect(pasteboard.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.TransientType")) == true)
+      restore()
+      #expect(pasteboard.string(forType: .string) == "original")
+      #expect(pasteboard.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.TransientType")) == false)
+      clipboard.write("copied transcript")
+      #expect(pasteboard.string(forType: .string) == "copied transcript")
+      #expect(pasteboard.types?.contains(NSPasteboard.PasteboardType("org.nspasteboard.TransientType")) == false)
     }
   }
 

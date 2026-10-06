@@ -2,12 +2,12 @@ import BlurtEngine
 import SwiftUI
 
 /// Settings panes stay short enough to fit on a small display. The explicit
-/// selector keeps all four panes visible and accessible even when AppKit would
+/// selector keeps all panes visible and accessible even when AppKit would
 /// collapse a TabView toolbar into an overflow menu.
 struct SettingsWindowRoot: View {
   @ObservedObject var appDelegate: AppDelegate
 
-  private enum Tab: Hashable { case general, textShortcuts, vibeDictate, advanced }
+  private enum Tab: Hashable { case general, textShortcuts, vibeDictate, clipboard, advanced }
 
   /// Always open on General, except for the main window's "+" deep-link.
   @State private var tab: Tab = .general
@@ -19,6 +19,7 @@ struct SettingsWindowRoot: View {
           tabButton(UITestIdentifiers.generalSettingsTab, .general)
           tabButton(UITestIdentifiers.textShortcutsTab, .textShortcuts)
           tabButton("VibeDictate", .vibeDictate)
+          tabButton(UITestIdentifiers.clipboardSettingsTab, .clipboard)
           tabButton(UITestIdentifiers.advancedSettingsTab, .advanced)
         }
         .padding(12)
@@ -28,8 +29,11 @@ struct SettingsWindowRoot: View {
           case .general: GeneralSettingsTab(coordinator: coordinator)
           case .textShortcuts: TextShortcutsSection()
           case .vibeDictate: VibeDictateSettingsTab(history: appDelegate.historyModel)
+          case .clipboard: ClipboardSyncSettingsView(model: appDelegate.clipboardSyncModel)
           case .advanced:
-            AdvancedSettingsTab(coordinator: coordinator, updateModel: appDelegate.updateCheckModel)
+            AdvancedSettingsTab(
+              coordinator: coordinator, updateModel: appDelegate.updateCheckModel,
+              clipboardModel: appDelegate.clipboardSyncModel)
           }
         }
       }
@@ -105,6 +109,7 @@ private struct GeneralSettingsTab: View {
 private struct AdvancedSettingsTab: View {
   @ObservedObject var coordinator: AppCoordinator
   @ObservedObject var updateModel: UpdateCheckModel
+  @ObservedObject var clipboardModel: ClipboardSyncModel
 
   var body: some View {
     SettingsPane {
@@ -112,7 +117,7 @@ private struct AdvancedSettingsTab: View {
       StyleProfilesSection()
       UpdateSection(model: updateModel)
       DeveloperSection()
-      ResetSection(coordinator: coordinator)
+      ResetSection(coordinator: coordinator, clipboardModel: clipboardModel)
     }
   }
 }
