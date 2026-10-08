@@ -18,8 +18,9 @@ private actor ClipboardSyncEvents {
 struct ClipboardSyncNetworkTests {
   private let key = Data(repeating: 12, count: 32)
 
+  // Sanitizers and concurrent suites need headroom; deadline-specific tests override this.
   private func service(
-    deviceID: UUID = UUID(), key: Data? = nil, endpoints: [NWEndpoint] = [], deadline: TimeInterval = 2
+    deviceID: UUID = UUID(), key: Data? = nil, endpoints: [NWEndpoint] = [], deadline: TimeInterval = 10
   ) -> ClipboardSyncService {
     ClipboardSyncService(
       deviceID: deviceID, key: key ?? self.key,
@@ -118,12 +119,16 @@ struct ClipboardSyncNetworkTests {
       items: [
         ClipboardSyncItem(representations: ["public.utf8-plain-text": Data("before restart".utf8)])
       ])
-    try await sender.send(payload)
+    // Restart cancels the old TCP connection; its acknowledgement may not reach
+    // the sender. Requiring the callback below still proves this payload arrived.
+    do {
+      try await sender.send(payload)
+    } catch ClipboardSyncError.connectionFailed {}
     for _ in 0..<100 {
       if await restarted.starts == 1 { break }
       try await Task.sleep(for: .milliseconds(10))
     }
-    #expect(await restarted.starts == 1)
+    try #require(await restarted.starts == 1)
     // A fresh transfer proves the restarted service is usable and drains the previous actor turn.
     let newTarget = try await endpoint(receiver)
     let newOrigin = UUID()

@@ -8,17 +8,15 @@ import XCTest
 final class SettingsUITests: BlurtUITestCase {
   func testClipboardSharingStartsOffAndTestModeCannotAccessPairingKey() {
     let settings = openSettingsWindow()
-    let tab = settings.buttons[UITestIdentifiers.clipboardSettingsTab]
-    XCTAssertTrue(tab.waitForExistence(timeout: 5))
-    tab.click()
-    let toggle = settings.checkBoxes[UITestIdentifiers.clipboardSyncToggle]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    let clipboard = selectSettingsTab(settings, named: UITestIdentifiers.clipboardSettingsTab)
+    let toggle = clipboard.anyDescendant(identified: UITestIdentifiers.clipboardSyncToggle)
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Clipboard sharing toggle not found")
     XCTAssertFalse(toggle.isEnabled, "Sharing must require an explicitly installed group key")
-    XCTAssertEqual(toggle.value as? Int, 0)
-    let status = settings.staticTexts[UITestIdentifiers.clipboardSyncStatus]
+    XCTAssertEqual("\(toggle.value ?? "")", "0")
+    let status = clipboard.staticTexts[UITestIdentifiers.clipboardSyncStatus]
     XCTAssertTrue(status.exists)
     XCTAssertEqual(status.label, "Выключено")
-    settings.buttons[UITestIdentifiers.clipboardCreateGroup].click()
+    clipboard.buttons[UITestIdentifiers.clipboardCreateGroup].click()
     XCTAssertFalse(toggle.isEnabled, "UI-test mode must never generate a real pairing secret")
   }
 

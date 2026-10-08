@@ -57,7 +57,10 @@ struct SettingsWindowRoot: View {
     Button {
       tab = destination
     } label: {
-      Text(title).frame(maxWidth: .infinity)
+      Text(title)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity)
     }
     .buttonStyle(.plain)
     .padding(.vertical, 7)
