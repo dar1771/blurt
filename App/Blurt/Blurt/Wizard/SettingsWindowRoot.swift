@@ -1,9 +1,10 @@
+import AppKit
 import BlurtEngine
 import SwiftUI
 
-/// Settings panes stay short enough to fit on a small display. The explicit
-/// selector keeps all panes visible and accessible even when AppKit would
-/// collapse a TabView toolbar into an overflow menu.
+/// Settings stay within the visible screen; long forms scroll rather than
+/// placing their last controls below the window. The explicit selector keeps
+/// every pane available without a TabView overflow menu.
 struct SettingsWindowRoot: View {
   @ObservedObject var appDelegate: AppDelegate
 
@@ -37,7 +38,10 @@ struct SettingsWindowRoot: View {
           }
         }
       }
-      .frame(width: MainWindow.contentWidth)
+      .frame(
+        width: MainWindow.contentWidth,
+        height: min(640, (NSScreen.main?.visibleFrame.height ?? 720) - 80), alignment: .top
+      )
       // Consumes the "+" deep-link (`AppDelegate.settingsOpensOnAdvanced`):
       // switch to Advanced, then reset the flag so it's one-shot — every other
       // route into Settings (⌘,, the Settings buttons, the menu-bar item)
@@ -75,17 +79,14 @@ struct SettingsWindowRoot: View {
   }
 }
 
-/// The chrome every settings pane shares: a grouped, non-scrolling `Form` that
-/// hugs its content, so each pane sizes the window to exactly its sections and
-/// the panes can't drift apart in layout.
+/// Grouped forms share the bounded settings viewport and scroll when needed.
 private struct SettingsPane<Content: View>: View {
   @ViewBuilder var content: Content
 
   var body: some View {
     Form { content }
       .formStyle(.grouped)
-      .scrollDisabled(true)
-      .fixedSize(horizontal: false, vertical: true)
+
   }
 }
 

@@ -76,8 +76,6 @@ struct ClipboardSyncSettingsView: View {
       }
     }
     .formStyle(.grouped)
-    .scrollDisabled(true)
-    .fixedSize(horizontal: false, vertical: true)
     .alert("Удалить полученные файлы?", isPresented: $clearingFiles) {
       Button("Удалить", role: .destructive) { Task { await model.clearReceivedFiles() } }
       Button("Отмена", role: .cancel) {}

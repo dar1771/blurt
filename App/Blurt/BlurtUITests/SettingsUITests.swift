@@ -15,7 +15,7 @@ final class SettingsUITests: BlurtUITestCase {
     XCTAssertEqual("\(toggle.value ?? "")", "0")
     let status = clipboard.staticTexts[UITestIdentifiers.clipboardSyncStatus]
     XCTAssertTrue(status.exists)
-    XCTAssertEqual(status.label, "Выключено")
+    waitForLabel(status, equals: "Выключено")
     clipboard.buttons[UITestIdentifiers.clipboardCreateGroup].click()
     XCTAssertFalse(toggle.isEnabled, "UI-test mode must never generate a real pairing secret")
   }
@@ -132,6 +132,7 @@ final class SettingsUITests: BlurtUITestCase {
     let advanced = selectSettingsTab(settings, named: UITestIdentifiers.advancedSettingsTab)
 
     let toggle = advanced.anyDescendant(identified: UITestIdentifiers.developerToggle)
+    scrollToSetting(toggle, in: advanced)
     XCTAssertTrue(toggle.waitForExistence(timeout: 10), "Developer mode toggle not found")
     XCTAssertEqual("\(toggle.value ?? "")", "0", "Developer mode should start switched off")
 
@@ -184,11 +185,13 @@ final class SettingsUITests: BlurtUITestCase {
     // visible in the same pane. (The UI-test launch resets persisted settings,
     // so this starts off.)
     let developerMode = advanced.anyDescendant(identified: UITestIdentifiers.developerToggle)
+    scrollToSetting(developerMode, in: advanced)
     XCTAssertTrue(developerMode.waitForExistence(timeout: 10), "Developer mode toggle not found")
     developerMode.click()
     XCTAssertEqual("\(developerMode.value ?? "")", "1", "Clicking should switch developer mode on")
 
     let reset = advanced.anyDescendant(identified: UITestIdentifiers.installReset)
+    scrollToSetting(reset, in: advanced)
     XCTAssertTrue(reset.waitForExistence(timeout: 10), "Reset button not found")
     reset.click()
 
@@ -221,6 +224,7 @@ final class SettingsUITests: BlurtUITestCase {
 
     XCTAssertTrue(
       confirmationTitle.waitForNonExistence(timeout: 5), "Cancel should dismiss the confirmation")
+    scrollToSetting(developerMode, in: advanced)
     XCTAssertEqual(
       "\(developerMode.value ?? "")", "1",
       "Cancelling the confirmation should leave the settings alone")

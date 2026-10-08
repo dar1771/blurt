@@ -81,6 +81,22 @@ class BlurtUITestCase: XCTestCase {
     return app.windows[UITestIdentifiers.settingsWindowTitle]
   }
 
+  /// Reveal lower controls in the bounded, scrollable settings form.
+  func scrollToSetting(_ element: XCUIElement, in window: XCUIElement) {
+    if element.exists && element.isHittable { return }
+    let scroll = window.scrollViews.firstMatch
+    XCTAssertTrue(scroll.exists, "Settings form has no scroll view: \(window.debugDescription)")
+    // Begin at the top so previously scrolled panes and lazy rows behave alike.
+    scroll.scroll(byDeltaX: 0, deltaY: 1_000)
+    for _ in 0..<8 {
+      if element.exists && element.isHittable { return }
+      scroll.scroll(byDeltaX: 0, deltaY: -180)
+    }
+    XCTAssertTrue(
+      element.exists && element.isHittable,
+      "Setting remains unreachable: \(window.debugDescription)")
+  }
+
   /// The UI-test harness window (auto-presented at launch in test mode). Closes
   /// the other windows so the harness is frontmost and its buttons are clickable
   /// (see `closeWindows`).
