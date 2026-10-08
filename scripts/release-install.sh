@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install the notarized release build locally so you can test the exact
 # artifact users will get, before publishing. Mounts the DMG produced by
-# release-build.sh and copies Blurt.app out of it into /Applications
+# release-build.sh and copies VibeDictate.app out of it into /Applications
 # (falling back to ~/Applications). The app inside the DMG is already signed,
 # stapled, and secure-timestamped — it is copied AS-IS and never re-signed,
 # since re-signing would invalidate the notarization staple.
@@ -21,13 +21,16 @@ source "$REPO_ROOT/scripts/release-lib.sh"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 step "Preflight"
-require_tools xcrun hdiutil codesign ditto awk
+require_signing_config
+require_tools xcrun hdiutil codesign ditto awk openssl
 
 VERSION="$(require_project_version "$APP_DIR/project.yml")"
 info "version: $VERSION"
 
-DMG="$BUILD_ROOT/Blurt-$VERSION.dmg"
+DMG="$BUILD_ROOT/VibeDictate-$VERSION.dmg"
 [ -f "$DMG" ] || die "DMG not found at $DMG — run scripts/release-build.sh first"
+
+verify_signer "$DMG" "$VIBEDICTATE_SIGNING_SHA256" "$VIBEDICTATE_SIGNING_TEAM_ID"
 
 step "Validate staple"
 xcrun stapler validate "$DMG" >/dev/null 2>&1 || die "DMG not stapled — rebuild with release-build.sh"
@@ -35,18 +38,36 @@ info "dmg stapled: $DMG"
 
 step "Choose install location"
 if [ -w /Applications ]; then
-  DEST="/Applications/Blurt.app"
+  DEST="/Applications/VibeDictate.app"
 else
-  DEST="$HOME/Applications/Blurt.app"
+  DEST="$HOME/Applications/VibeDictate.app"
   mkdir -p "$HOME/Applications"
 fi
 info "destination: $DEST"
+
+step "Mount DMG"
+# Own mount point so we don't have to parse hdiutil's output (which reports
+# /private/tmp/... rather than /tmp/... on macOS). Detach + cleanup on exit.
+MOUNT_POINT="$(mktemp -d /tmp/blurt-install.XXXXXX)"
+trap 'hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true; rmdir "$MOUNT_POINT" >/dev/null 2>&1 || true' EXIT
+hdiutil attach -nobrowse -noverify -mountpoint "$MOUNT_POINT" "$DMG" >/dev/null
+MOUNTED_APP="$MOUNT_POINT/VibeDictate.app"
+[ -d "$MOUNTED_APP" ] || die "mounted DMG missing VibeDictate.app"
+
+step "Verify mounted bundle before replacing the install"
+xcrun stapler validate "$MOUNTED_APP" >/dev/null
+codesign --verify --strict --deep "$MOUNTED_APP"
+verify_signer "$MOUNTED_APP" "$VIBEDICTATE_SIGNING_SHA256" "$VIBEDICTATE_SIGNING_TEAM_ID"
+MOUNTED_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$MOUNTED_APP/Contents/Info.plist")"
+MOUNTED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$MOUNTED_APP/Contents/Info.plist")"
+[ "$MOUNTED_ID" = "app.vibedictate" ] || die "unexpected bundle id in DMG: $MOUNTED_ID"
+[ "$MOUNTED_VERSION" = "$VERSION" ] || die "unexpected version in DMG: $MOUNTED_VERSION"
 
 step "Quit running Blurt"
 # A running bundle can't be replaced cleanly. Ask it to quit, then fall back
 # to a hard kill; either way wait briefly for the process to exit.
 if pgrep -x Blurt >/dev/null 2>&1; then
-  osascript -e 'quit app "Blurt"' >/dev/null 2>&1 || true
+  osascript -e 'quit app id "app.vibedictate"' >/dev/null 2>&1 || true
   for _ in 1 2 3 4 5; do
     pgrep -x Blurt >/dev/null 2>&1 || break
     sleep 1
@@ -56,15 +77,6 @@ if pgrep -x Blurt >/dev/null 2>&1; then
 else
   info "Blurt not running"
 fi
-
-step "Mount DMG"
-# Own mount point so we don't have to parse hdiutil's output (which reports
-# /private/tmp/... rather than /tmp/... on macOS). Detach + cleanup on exit.
-MOUNT_POINT="$(mktemp -d /tmp/blurt-install.XXXXXX)"
-trap 'hdiutil detach "$MOUNT_POINT" >/dev/null 2>&1 || true; rmdir "$MOUNT_POINT" >/dev/null 2>&1 || true' EXIT
-hdiutil attach -nobrowse -noverify -mountpoint "$MOUNT_POINT" "$DMG" >/dev/null
-MOUNTED_APP="$MOUNT_POINT/Blurt.app"
-[ -d "$MOUNTED_APP" ] || die "mounted DMG missing Blurt.app"
 
 step "Install"
 rm -rf "$DEST"
@@ -81,6 +93,9 @@ codesign --verify --strict --deep "$DEST" || die "installed app failed signature
 INSTALLED_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$DEST/Contents/Info.plist")"
 [ "$INSTALLED_VERSION" = "$VERSION" ] \
   || die "installed version mismatch: expected $VERSION, got $INSTALLED_VERSION"
+INSTALLED_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$DEST/Contents/Info.plist")"
+[ "$INSTALLED_ID" = "app.vibedictate" ] || die "unexpected installed bundle id: $INSTALLED_ID"
+verify_signer "$DEST" "$VIBEDICTATE_SIGNING_SHA256" "$VIBEDICTATE_SIGNING_TEAM_ID"
 info "installed bundle verified ($INSTALLED_VERSION, signed + stapled)"
 
 step "Register with LaunchServices"
@@ -103,9 +118,8 @@ cat <<EOF
   Installed release v$VERSION to:
     $DEST
 
-  Test it now — relaunch Blurt and dictate. Same bundle id + Developer ID
-  as your previous install, so existing Accessibility / Microphone grants
-  carry over. If permissions misbehave, reset them with:
+  Test it now — relaunch VibeDictate and dictate. Permissions belong to this bundle id and signing requirement.
+  A first install or certificate change may require granting them again. If permissions misbehave, reset them with:
     scripts/reset-install.sh
 
   When you're satisfied, confirm the publish prompt (or run):

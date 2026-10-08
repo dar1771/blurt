@@ -1,10 +1,47 @@
 # Release runbook
 
-Blurt is built, signed, notarized, and published by GitHub Actions, not from a
+VibeDictate is built, signed, notarized, and published by GitHub Actions, not from a
 maintainer's Mac. Every step is a workflow run or a click in the GitHub UI, so a
 release can be driven from a browser, a phone, or a chat session with no terminal
 anywhere in the loop. This file covers the security-critical custody and policy
 decisions that aren't obvious from the scripts and the workflows.
+
+## VibeDictate readiness
+
+The pipeline prepares `VibeDictate-<version>.dmg`, containing `VibeDictate.app`
+with bundle ID `app.vibedictate`, and `VibeDictate-<version>.app.dSYM.zip`.
+Publishing uploads both the versioned DMG and stable `VibeDictate.dmg` to
+[dar1771/blurt releases](https://github.com/dar1771/blurt/releases).
+`BlurtEngine`, Xcode target/scheme `Blurt`, the executable `Blurt`, and source
+paths under `App/Blurt` remain technical identifiers. The dSYM retains that
+executable's debug symbols even though its archive has the product name.
+
+**Blocked until owner configuration:** no VibeDictate Developer ID certificate
+pins or notary credentials have been verified. A successful `check` does not
+verify signing or notarization. The Apple Development identity used for local
+Dev acceptance is not a Developer ID release identity. Do not reuse the original
+Blurt certificate or infer the release team from the Dev build.
+
+Set these non-secret **environment variables** in `release-build` from the
+verified Developer ID Application certificate (no defaults are supplied):
+
+| GitHub variable    | Local environment variable     | Value                                                      |
+| ------------------ | ------------------------------ | ---------------------------------------------------------- |
+| `SIGNING_IDENTITY` | `VIBEDICTATE_SIGNING_IDENTITY` | SHA-1 identity hash, 40 hex characters                     |
+| `SIGNING_SHA256`   | `VIBEDICTATE_SIGNING_SHA256`   | Leaf SHA-256 fingerprint, 64 hex characters without colons |
+| `SIGNING_TEAM_ID`  | `VIBEDICTATE_SIGNING_TEAM_ID`  | Certificate Team ID, 10 uppercase letters/digits           |
+
+The build and install scripts reject missing/malformed pins before accessing
+credentials. CI also requires the complete selected notary credential: API key
+plus key ID and issuer, or Apple ID plus app-specific password. Existing
+`BLURT_*` credential variable names remain the script interface; their values
+must belong to VibeDictate. For a local install test, export the same three
+`VIBEDICTATE_*` pins before running `scripts/release-install.sh`.
+
+The owner must verify `release-build` branch restrictions and required reviewers
+on `release-publish`, complete manual acceptance, and explicitly authorize a
+signed dry run. Release publication and merge are separate decisions. This
+preparation does not bump the version or dispatch either release workflow.
 
 ## Shape of a release
 
@@ -167,7 +204,7 @@ Producing the two base64 values:
 ```sh
 # Signing identity: export from Keychain Access (or `security export`) as .p12,
 # then encode. Keep the .p12 itself offline; never commit it, never sync it.
-base64 -i Blurt-DeveloperID.p12 | pbcopy      # -> SIGNING_P12_BASE64
+base64 -i VibeDictate-DeveloperID.p12 | pbcopy      # -> SIGNING_P12_BASE64
 
 # Notary API key: download the .p8 once from App Store Connect (Users and
 # Access -> Integrations -> Keys). Apple will not let you download it twice.
@@ -176,8 +213,7 @@ base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy      # -> NOTARY_KEY_P8_BASE64
 
 ## Signing key custody
 
-The Developer ID Application key (`602F699488189767137DF15633B967B1371ACD86`,
-team `B2VQF7Q2QY`) is the root of trust: Gatekeeper accepts anything signed with
+The owner-verified Developer ID Application key is the root of trust: Gatekeeper accepts anything signed with
 it, so every published DMG must carry this signature. Protect it accordingly:
 
 - The canonical copy is the `SIGNING_P12_BASE64` secret on the `release-build`
@@ -190,13 +226,12 @@ it, so every published DMG must carry this signature. Protect it accordingly:
   destroyed after the job.
 - The build then **pins the signer**: `verify_signer` re-derives the leaf
   certificate's SHA-256 fingerprint and the Team ID from the produced artifacts
-  and refuses to continue unless both match the constants in
-  `release-build.sh`. A build signed with any other (even otherwise-valid)
+  and refuses to continue unless both match the explicit environment configuration. A build signed with any other (even otherwise-valid)
   Developer ID fails closed rather than shipping.
 - **Local signing still works** for debugging a single stage on a Mac. With no
   `BLURT_SIGNING_P12_BASE64` in the environment, `release-build.sh` falls back to
   a dedicated keychain that stays **locked at rest**
-  (`~/Library/Keychains/blurt-signing.keychain-db`), with a tight partition-list
+  (`~/Library/Keychains/vibedictate-signing.keychain-db`), with a tight partition-list
   ACL (only `codesign` / `productsign` may use it) and a 15-minute auto-lock. It
   unlocks that keychain for the duration of the build and re-locks it on exit.
   The unlock password is resolved from, in order:
@@ -206,19 +241,18 @@ it, so every published DMG must carry this signature. Protect it accordingly:
   keychain, so the unlock secret never sits in login.
 
   ```sh
-  export OP_ACCOUNT=assemblyai.1password.com
-  export BLURT_SIGNING_KEYCHAIN_OP='op://Employee/Blurt signing keychain/password'
+  # Set an owner-controlled 1Password reference if using that path.
+  export BLURT_SIGNING_KEYCHAIN_OP='op://<vault>/<item>/password'
   scripts/release-build.sh --skip-checks
   ```
 
   Override the keychain path with `BLURT_SIGNING_KEYCHAIN` if it lives elsewhere.
-  On that path the notary credential comes from the `blurt-notary` keychain
+  On that path the notary credential comes from the `vibedictate-notary` keychain
   profile, pinned to the signing keychain so a duplicate profile elsewhere on the
   search list can't shadow it.
 
 - **Everyday dev builds never touch this key.** The `Debug` / `Debug-Local`
-  configs sign with the **Apple Development** cert (login keychain, same team
-  `B2VQF7Q2QY`), so `scripts/dev-build.sh` and Xcode builds work with the release
+  configs sign with an **Apple Development** cert from the login keychain, so `scripts/dev-build.sh` and Xcode builds work with the release
   keychain locked. Only `release-build.sh` uses the Developer ID key.
 
 ## Rotating the signing certificate
@@ -227,23 +261,21 @@ If the key is compromised (or the cert expires):
 
 1. Revoke the Developer ID Application certificate in the Apple Developer portal.
 2. Issue a new Developer ID Application certificate **on the same team**
-   (`B2VQF7Q2QY`).
-3. Update `IDENTITY` (the SHA-1 identity hash, from
-   `security find-identity -v -p codesigning`) **and** `IDENTITY_SHA256` (the
+   configured in `SIGNING_TEAM_ID`.
+3. Update environment variable `SIGNING_IDENTITY` (the SHA-1 identity hash, from
+   `security find-identity -v -p codesigning`) **and** `SIGNING_SHA256` (the
    leaf cert's SHA-256 fingerprint, from
-   `openssl x509 -noout -fingerprint -sha256 -in <cert.pem>`) in
-   `scripts/release-build.sh`. Both are pinned; a stale `IDENTITY_SHA256` fails
+   `openssl x509 -noout -fingerprint -sha256 -in <cert.pem>`) in the `release-build` environment. Both are pinned; a stale `SIGNING_SHA256` fails
    the build at `verify_signer` rather than shipping the wrong signer.
 4. Re-export the new cert + key as a `.p12` and replace `SIGNING_P12_BASE64` and
    `SIGNING_P12_PASSWORD` on the `release-build` environment.
 5. Cut a fresh notarized release.
 
-Rotating to a new cert **within the same team** (`B2VQF7Q2QY`) is seamless for
-users — Gatekeeper accepts any valid Developer ID from any team, and updates are
-a manual DMG download (see [Updates in AGENTS.md](./AGENTS.md#updates)), so there
-is no signing-requirement pin to break. A **team change** (new Team ID) is still
-worth avoiding on principle and announcing, but it no longer strands existing
-users the way the former in-app updater's team-pinned requirement did.
+A new certificate can change the designated requirement stored by macOS for
+Accessibility, even within the same team. The app detects a changed requirement
+and, if untrusted, resets its own Accessibility grant so the user can grant it
+again. Test permission recovery on the actual signed artifact before publishing.
+Updates remain manual DMG downloads; no in-place updater pins a signing team.
 
 ## Rotating the notary credential
 
@@ -253,15 +285,15 @@ Integrations → Keys), generate a new one, download the `.p8` once, and replace
 
 **App-specific password (the CI fallback, and the local keychain profile):**
 revoke the old password at appleid.apple.com and mint a new one. For CI, replace
-`NOTARY_PASSWORD`. For a local `blurt-notary` profile, re-run
-`xcrun notarytool store-credentials blurt-notary --keychain
-~/Library/Keychains/blurt-signing.keychain-db --apple-id <you> --team-id
-B2VQF7Q2QY --password <new-app-specific-password>`. The profile is submit-only;
+`NOTARY_PASSWORD`. For a local `vibedictate-notary` profile, re-run
+`xcrun notarytool store-credentials vibedictate-notary --keychain
+~/Library/Keychains/vibedictate-signing.keychain-db --apple-id <you> --team-id
+<verified-team-id> --password <new-app-specific-password>`. The profile is submit-only;
 it cannot sign.
 
 ## A bad release: roll forward, never roll back
 
-Blurt does **not** yank published releases. The update check only ever offers
+VibeDictate does **not** yank published releases. The update check only ever offers
 users a strictly higher version (`UpdateChecker` compares `SemanticVersion` and
 reports `.available` only when the latest tag is greater), so the fix for any bad
 build is to **ship a new patch**: dispatch `release-bump`, merge, dispatch

@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The terminal half of a full reset. Blurt ships the same sweep in-app —
-# Settings > Advanced > Reset, the engine's `InstallReset` — for the user who
-# shouldn't have to run a shell script; keep the two in step. This script stays
+# The terminal half of a VibeDictate reset. The in-app reset clears the
+# AssemblyAI key only; this script also clears the OpenRouter key. Settings
+# > Advanced > Reset uses the engine's `InstallReset`. This script stays
 # the fuller one: it covers *both* bundle ids (a running copy can only reset its
 # own) and unregisters stale app copies from LaunchServices, neither of which an
 # app can meaningfully do to itself.
 
-# Both bundle ids Blurt ships under. Lowercase to match how macOS records the
+# Both bundle ids VibeDictate ships under. Lowercase to match how macOS records the
 # Accessibility TCC client (see the PRODUCT_BUNDLE_IDENTIFIER note in
 # App/Blurt/project.yml), where the split is also explained: releases are
-# `dev.alex.blurt`, every debug configuration is `dev.alex.blurt.dev`, so a dev
+# `app.vibedictate`, every debug configuration is `app.vibedictate.dev`, so a dev
 # build is a separate app with its own permissions, defaults and install path.
-# The first must match `HostIdentity.blurt.subsystem`
+# The first must match `HostIdentity.vibeDictate.subsystem`
 # (Sources/BlurtEngine/HostIdentity.swift) — the code's single definition of
 # this string. A full reset means both: this script exists to get back to a
 # clean preinstall state, and leaving half the state behind is how you end up
 # debugging the other build's leftovers.
-BUNDLE_IDS=("dev.alex.blurt" "dev.alex.blurt.dev")
+BUNDLE_IDS=("app.vibedictate" "app.vibedictate.dev")
 
 # Quit Blurt first, or every step below is unreliable: a running instance
 # keeps its defaults cached in cfprefsd (which rewrites the plist on quit,
@@ -26,7 +26,7 @@ BUNDLE_IDS=("dev.alex.blurt" "dev.alex.blurt.dev")
 # keychain item. killall (not AppleScript `quit`) avoids prompting the calling
 # terminal for Automation permission. One name covers both builds: PRODUCT_NAME
 # stays `Blurt` in every configuration, so both executables are called `Blurt`.
-echo "==> Quitting Blurt if running"
+echo "==> Quitting VibeDictate if running"
 killall Blurt 2>/dev/null || true
 
 for bundle_id in "${BUNDLE_IDS[@]}"; do
@@ -40,7 +40,7 @@ for bundle_id in "${BUNDLE_IDS[@]}"; do
 done
 
 echo "==> Removing duplicate LaunchServices registrations"
-# Repeated builds leave Blurt.app / Blurt Dev.app copies in DerivedData, /tmp,
+# Repeated builds leave VibeDictate.app / VibeDictate Dev.app copies in DerivedData, /tmp,
 # periphery caches, and other checkouts — all claiming one of the bundle ids.
 # macOS then resolves an id to a transient copy TCC refuses to register, so
 # Blurt silently vanishes from the Accessibility list. Unregister every copy,
@@ -52,13 +52,13 @@ if [ -x "$LSREGISTER" ]; then
   # BSD and GNU sed agree). A looser `Blurt[^/]*\.app` would also sweep
   # BlurtUITests-Runner.app — a bundle this script neither owns nor re-registers.
   "$LSREGISTER" -dump 2>/dev/null \
-    | sed -n 's/^[[:space:]]*path:[[:space:]]*\(.*\/Blurt\( Dev\)\{0,1\}\.app\) (0x[0-9a-f]*)$/\1/p' \
+    | sed -n 's/^[[:space:]]*path:[[:space:]]*\(.*\/VibeDictate\( Dev\)\{0,1\}\.app\) (0x[0-9a-f]*)$/\1/p' \
     | sort -u \
     | while IFS= read -r app; do
       "$LSREGISTER" -u "$app" >/dev/null 2>&1 && echo "    unregistered: $app" || true
     done || echo "    note: lsregister dump failed; skipping unregister sweep"
-  for dest in "/Applications/Blurt.app" "$HOME/Applications/Blurt.app" \
-    "/Applications/Blurt Dev.app" "$HOME/Applications/Blurt Dev.app"; do
+  for dest in "/Applications/VibeDictate.app" "$HOME/Applications/VibeDictate.app" \
+    "/Applications/VibeDictate Dev.app" "$HOME/Applications/VibeDictate Dev.app"; do
     [ -d "$dest" ] && "$LSREGISTER" -f "$dest" >/dev/null 2>&1 && echo "    registered: $dest" || true
   done
 fi
@@ -71,28 +71,38 @@ done
 # AssemblyAI API key lives in the login keychain as a generic password. Keychain
 # items are per login keychain rather than per app, so the two builds are NOT
 # separated by their bundle ids the way their defaults and TCC rows are: each one
-# names its own service. These must match `HostIdentity.blurt.keychainService`
-# and `HostIdentity.blurtDev.keychainService` (Sources/BlurtEngine/HostIdentity.swift,
+# names its own service. These must match `HostIdentity.vibeDictate.keychainService`
+# and `HostIdentity.vibeDictateDev.keychainService` (Sources/BlurtEngine/HostIdentity.swift,
 # used by APIKeyStore); `HostIdentityTests` pins both, so a rename there fails
 # `swift test` until this list is updated with it.
-KEYCHAIN_SERVICES=("blurt" "blurt-dev")
-# Installs that predate the service rename may still hold the key under the old
-# service (the lowercase bundle id) — the shipping id, always, since that rename
-# predates the debug/release id split, so there was only ever one value to have
-# used. A full reset deletes it too.
-KEYCHAIN_SERVICES+=("${BUNDLE_IDS[0]}")
-KEYCHAIN_ACCOUNT="AssemblyAIAPIKey"
+KEYCHAIN_SERVICES=("vibedictate" "vibedictate-dev")
+KEYCHAIN_ACCOUNTS=("AssemblyAIAPIKey" "OpenRouterAPIKey")
 for keychain_service in "${KEYCHAIN_SERVICES[@]}"; do
-  echo "==> Deleting AssemblyAI API key from Keychain ($keychain_service / $KEYCHAIN_ACCOUNT)"
-  security delete-generic-password -s "$keychain_service" -a "$KEYCHAIN_ACCOUNT" >/dev/null 2>&1 || true
+  for keychain_account in "${KEYCHAIN_ACCOUNTS[@]}"; do
+    echo "==> Deleting API key from Keychain ($keychain_service / $keychain_account)"
+    security delete-generic-password -s "$keychain_service" -a "$keychain_account" >/dev/null 2>&1 || true
+  done
 done
 
 # Developer mode appends transcript and failure logs here (see DictationLog); a
 # fresh install has neither, so clear them too. The rmdir below only succeeds
 # once the directory is empty, so every file Blurt writes there must be listed.
-DICTATION_LOG_DIR="$HOME/Library/Logs/Blurt"
+DICTATION_LOG_DIR="$HOME/Library/Logs/VibeDictate"
 echo "==> Removing dictation logs ($DICTATION_LOG_DIR/{dictations,errors}.jsonl)"
 rm -f "$DICTATION_LOG_DIR/dictations.jsonl" "$DICTATION_LOG_DIR/errors.jsonl"
 rmdir "$DICTATION_LOG_DIR" 2>/dev/null || true
 
-echo "Done. Relaunch Blurt for permission prompts to reappear."
+# Clipboard sharing has its own per-app secret and private received-file cache.
+# Match ClipboardSyncStorage.service; never remove unrelated cache directories.
+for bundle_id in "${BUNDLE_IDS[@]}"; do
+  clipboard_service="$bundle_id.clipboard-sync"
+  echo "==> Deleting clipboard group key ($clipboard_service)"
+  security delete-generic-password -s "$clipboard_service" -a "group-key" >/dev/null 2>&1 || true
+  clipboard_cache="$HOME/Library/Caches/$clipboard_service"
+  echo "==> Removing received clipboard files ($clipboard_cache)"
+  rm -rf "$clipboard_cache"
+done
+
+echo "Done. Relaunch VibeDictate for permission prompts to reappear."
+
+# Saved audio and History.sqlite are intentionally retained, like the in-app reset.

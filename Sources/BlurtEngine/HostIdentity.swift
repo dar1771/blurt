@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 import os
 
 /// Everything the engine needs to know about *which app it is running inside*:
@@ -112,6 +111,8 @@ public struct HostIdentity: Sendable, Equatable {
     releaseURL: URL(
       staticString: "https://api.github.com/repos/AssemblyAI/blurt/releases/latest"))
 
+  // Kept for external BlurtEngine hosts and the documented Blurt debug identity.
+  // periphery:ignore
   /// The identity a **debug build** of Blurt runs under — "Blurt Dev", which
   /// macOS already treats as a separate app (its own bundle id, TCC rows and
   /// defaults domain). Only `keychainService` differs from `.blurt`, because the
@@ -127,6 +128,17 @@ public struct HostIdentity: Sendable, Equatable {
   /// `scripts/reset-install.sh` hard-codes this service alongside the shipping
   /// one (bash can't read this constant); `HostIdentityTests` pins both.
   public static let blurtDev = blurt.withKeychainService("blurt-dev")
+
+  public static let vibeDictate = HostIdentity(
+    productName: "VibeDictate",
+    subsystem: "app.vibedictate",
+    keychainService: "vibedictate",
+    defaultsPrefix: "VibeDictate",
+    logDirectoryName: "VibeDictate",
+    releaseURL: URL(
+      staticString: "https://api.github.com/repos/dar1771/blurt/releases/latest"))
+
+  public static let vibeDictateDev = vibeDictate.withKeychainService("vibedictate-dev")
 
   /// This identity with a different Keychain service. Private: the two values
   /// Blurt ships are the two above, and a host that wants a third builds it with

@@ -643,15 +643,36 @@ else
   cd "$APP_DIR"
   PBXPROJ="Blurt.xcodeproj/project.pbxproj"
   if command -v xcodegen >/dev/null 2>&1; then
-    # Drift check: regenerating must not change the on-disk project. If it does,
-    # the committed .pbxproj is stale vs project.yml — fail and ask for a commit.
-    BEFORE="$(shasum "$PBXPROJ" 2>/dev/null || true)"
+    # The local package's folder reference includes the checkout directory name
+    # (e.g. "blurt" on CI, a custom name for local clones). Compare a canonical
+    # form so that this path-only difference is not mistaken for real drift.
+    DRIFT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/blurt-xcodegen.XXXXXX")"
+    cp "$PBXPROJ" "$DRIFT_DIR/before.pbxproj"
     xcodegen generate --quiet
-    AFTER="$(shasum "$PBXPROJ" 2>/dev/null || true)"
-    if [ -n "$BEFORE" ] && [ "$BEFORE" != "$AFTER" ]; then
+    normalize_package_root_reference() {
+      perl -0777 -e '
+        my $text = do { local $/; <> };
+        my ($id) = $text =~ /^\s*([A-F0-9]{24})\s+\/\* [^*\r\n]+ \*\/ = \{isa = PBXFileReference; lastKnownFileType = folder; name = (?:"[^"]+"|[^;]+); path = \.\.\/\.\.; sourceTree = SOURCE_ROOT; \};/m;
+        if (defined $id) {
+          $text =~ s/\Q$id\E/BLURT_REPO_ROOT_ID/g;
+          $text =~ s/(BLURT_REPO_ROOT_ID \/\* )[^*\r\n]+( \*\/)/${1}REPO_ROOT${2}/g;
+          $text =~ s{^[ \t]*BLURT_REPO_ROOT_ID /\* REPO_ROOT \*/ = \{isa = PBXFileReference; lastKnownFileType = folder; name = (?:"[^"]+"|[^;]+); path = \.\.\/\.\.; sourceTree = SOURCE_ROOT; \};\r?\n}{}m;
+        }
+        print $text;
+      ' "$1" >"$2"
+    }
+    normalize_package_root_reference "$DRIFT_DIR/before.pbxproj" "$DRIFT_DIR/before.normalized"
+    normalize_package_root_reference "$PBXPROJ" "$DRIFT_DIR/after.normalized"
+    if ! cmp -s "$DRIFT_DIR/before.normalized" "$DRIFT_DIR/after.normalized"; then
+      diff -u "$DRIFT_DIR/before.pbxproj" "$PBXPROJ" || true
+      rm -rf "$DRIFT_DIR"
       echo "error: $PBXPROJ is out of sync with project.yml; run 'xcodegen generate' and commit it"
       exit 1
     fi
+    # Keep the caller's exact project bytes (including any pre-existing local
+    # edits) when the only generated difference was the checkout's folder name.
+    cp "$DRIFT_DIR/before.pbxproj" "$PBXPROJ"
+    rm -rf "$DRIFT_DIR"
   else
     echo "note: xcodegen not installed; skipping project regeneration"
   fi
@@ -668,15 +689,23 @@ else
   # the app and the engine package, so the log covers both.
   # Removed by the exit trap installed at the top, which owns every exit path.
   APP_BUILD_LOG="$(mktemp -t blurt-build)"
+  # A known path lets the isolated clipboard suites link the app's own engine.
+  APP_CHECK_DERIVED="${TMPDIR:-/tmp}/blurt-check-build"
   xcodebuild \
     -project Blurt.xcodeproj \
     -scheme Blurt \
     -configuration Debug \
     -destination 'platform=macOS' \
+    -derivedDataPath "$APP_CHECK_DERIVED" \
     CODE_SIGN_IDENTITY="-" \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=NO \
     build 2>&1 | tee "$APP_BUILD_LOG" | "${PRETTY[@]}"
+
+  echo "==> clipboard sync shell adapters (isolated pasteboard and temporary files)"
+  "$REPO_ROOT/scripts/clipboard-sync-smoke.sh" "$APP_CHECK_DERIVED"
+  echo "==> UI-test history isolation (in-memory stores only)"
+  "$REPO_ROOT/scripts/history-isolation-smoke.sh" "$APP_CHECK_DERIVED"
 
   # Whole-app integration steps — CI-only by default. Both drive the *real* app,
   # and they don't just need a GUI session, they take one over: the XCUITest
@@ -721,7 +750,10 @@ else
     # leak detector and fails only on leaks attributable to Blurt's own code (the
     # fixed set of system-framework XPC leaks is filtered out). Like the UI suite
     # it needs the GUI session the macos-26 runner provides.
-    bash scripts/leaks.sh
+    bash scripts/leaks.sh || {
+      echo "error: scripts/leaks.sh failed after the UI suite" >&2
+      exit 1
+    }
   else
     echo "==> skipping the UI suite and leak scan (they take over the machine)"
     echo "    CI runs both on every PR and is the authority on them. To run them"

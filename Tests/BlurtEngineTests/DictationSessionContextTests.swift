@@ -195,6 +195,10 @@ struct DictationSessionContextTests {
     // request goes out with no context at all — the case being tested.
     await clock.waitUntilSleeping(for: DictationSession.contextWaitBudget)
     clock.advance(by: DictationSession.contextWaitBudget)
+    // Advancing the clock wakes the deadline task; it does not await the
+    // upload consuming that result. Keep capture blocked until the request
+    // actually starts, so a busy executor cannot let capture win the race.
+    while await transcriber.receivedContexts.isEmpty { await Task.yield() }
     // Only now let the read finish. Waiting on the box rather than sleeping, so
     // this asserts the recovery instead of racing the capture queue.
     gate.signal()

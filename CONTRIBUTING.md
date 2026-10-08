@@ -1,11 +1,11 @@
-# Contributing to Blurt
+# Contributing to VibeDictate
 
-Thanks for taking a look. Blurt is a small, open-source macOS dictation app, and
+Thanks for taking a look. VibeDictate is a small, open-source macOS dictation app, and
 contributions of all sizes are welcome — bug reports, fixes, docs, or a new idea.
 
 ## Before you start
 
-Blurt is **macOS-only** (Intel or Apple Silicon, AppKit + AVFoundation). You need a Mac
+VibeDictate is **macOS-only** (Intel or Apple Silicon, AppKit + AVFoundation). You need a Mac
 with Xcode to build, test, or run it — see [Local setup](#local-setup) below.
 On Linux you can still read and edit the Swift source, but you can't build or
 verify it locally; CI on `macos-26` is the authority on green.
@@ -26,17 +26,17 @@ You'll need:
 - **[Homebrew](https://brew.sh)**, which `bootstrap.sh` uses to install
   everything else.
 - An **[AssemblyAI API key](https://www.assemblyai.com/dashboard/api-keys)**
-  (free tier is plenty) if you want to actually dictate with your build. Blurt's
-  setup wizard asks for it on first launch and stores it in the Keychain.
+  and an OpenRouter API key for MAI transcription and normalization.
+  Enter keys in the app; they are stored in the macOS Keychain.
 
 Then:
 
 ```bash
-git clone https://github.com/AssemblyAI/blurt.git
+git clone https://github.com/dar1771/blurt.git
 cd blurt
 scripts/bootstrap.sh        # install the toolchain from Brewfile
-scripts/dev-build.sh        # build Blurt and install it to /Applications
-open -a "Blurt Dev"
+scripts/dev-build.sh        # build VibeDictate and install it to /Applications
+open -a "VibeDictate Dev"
 ```
 
 That's the whole setup. Everything else is one of these scripts:
@@ -44,7 +44,7 @@ That's the whole setup. Everything else is one of these scripts:
 | Script                        | What it does                                                                                                                                                                                                                     |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/bootstrap.sh`        | `brew bundle install` from `Brewfile` — xcodegen, swiftlint, prettier, shellcheck, markdownlint, periphery, xcbeautify — then verifies each one answers on PATH, because `check.sh` _skips_ a missing linter rather than failing |
-| `scripts/dev-build.sh`        | Clean signed `Debug-Local` build, installed as `/Applications/Blurt Dev.app`. The everyday loop.                                                                                                                                 |
+| `scripts/dev-build.sh`        | Clean signed `Debug-Local` build, installed as `/Applications/VibeDictate Dev.app`. The everyday loop.                                                                                                                           |
 | `scripts/check.sh`            | The full health check CI runs. The source of truth for "is this green?"                                                                                                                                                          |
 | `scripts/check.sh --portable` | Just the platform-independent subset (docs, site, scripts, workflows) — the part that runs off a Mac                                                                                                                             |
 | `swift test`                  | Engine unit tests only (Swift Testing), no app build                                                                                                                                                                             |
@@ -53,28 +53,30 @@ That's the whole setup. Everything else is one of these scripts:
 
 `dev-build.sh` installs to `/Applications` on purpose: macOS refuses to register
 Accessibility and Input-Monitoring grants for an app living in a build
-directory, so Blurt is unusable from DerivedData. It builds the `Debug-Local`
+directory, so VibeDictate is unusable from DerivedData. It builds the `Debug-Local`
 configuration — a debug build with the UI-test scaffolding compiled out, so it's
 the real app.
 
 ### Dev builds are a separate app
 
-Every debug configuration builds under the bundle id `dev.alex.blurt.dev` and
-installs as **`/Applications/Blurt Dev.app`**; only `Release` is `dev.alex.blurt`
-/ `Blurt.app`. So a dev build sits beside a released Blurt rather than replacing
+Every debug configuration builds under the bundle id `app.vibedictate.dev` and
+installs as **`/Applications/VibeDictate Dev.app`**; only `Release` is `app.vibedictate`
+/ `VibeDictate.app`. So a dev build sits beside a released VibeDictate rather than replacing
 it — you can run either, and each has its own Privacy & Security rows, its own
-settings, and its own Dock icon. Grant "Blurt Dev" microphone and Accessibility
+settings, and its own Dock icon. Grant "VibeDictate Dev" microphone and Accessibility
 once; they stick across rebuilds.
 
-Each keeps its own AssemblyAI key in the Keychain — `blurt` for the release,
-`blurt-dev` for the dev build — so a dev build can't read, overwrite or (through
+Each keeps its own AssemblyAI key in the Keychain — `vibedictate` for the release,
+`vibedictate-dev` for the dev build — so a dev build can't read, overwrite or (through
 Settings → Advanced → Reset) delete the key you dictate with. You'll enter the
 key once in each, and neither one triggers the "another app wants to use your
 confidential information" prompt the shared item used to.
 
-`scripts/reset-install.sh` wipes both. Settings → Advanced → **Reset** does the same from
-inside the app, for whichever build you're running — and restarts it, so the
-permission prompts come back.
+`scripts/reset-install.sh` clears permissions, settings and both API keys for
+both builds. In-app Reset clears permissions, settings and the AssemblyAI key for
+the running build and restarts it; it currently retains the OpenRouter key.
+Both reset paths retain saved audio and history. Do not run the reset script
+unless you intend to remove those keys and grants.
 
 ### A note on signing
 
@@ -94,9 +96,7 @@ xcodebuild -project App/Blurt/Blurt.xcodeproj -scheme Blurt \
 
 That skips the `/Applications` install, and an ad-hoc signature changes on every
 build — macOS keys the Accessibility grant to the signature, so you'd re-grant
-permissions after each rebuild. (Blurt notices the signature changed and clears
-the orphaned grant at launch; without that the Blurt Dev row stays switched on in
-System Settings while the app keeps reporting it as denied.) Fine for checking
+permissions after each rebuild. Ad-hoc builds do not run the signing-grant migration. Fine for checking
 that a change compiles and launches; `dev-build.sh` is the better daily loop.
 
 ### After editing `App/Blurt/project.yml`
@@ -121,15 +121,13 @@ open the PR and let CI on `macos-26` answer that.
   external dependencies in the engine.
 - Write a clear description of what changed and why.
 
-Every PR that touches code gets an **installable dev build**: CI builds
-`Blurt.app` from your branch and a bot comments a download link, so a reviewer
-can try the change rather than imagine it. The build is ad-hoc signed and not
-notarized, so it needs its quarantine flag cleared, and its permissions granted
-once per build — the comment spells out the commands.
+CI verifies the app with offline UI doubles; it does not publish installable
+PR builds. Reviewers build locally with `scripts/dev-build.sh`. Real microphone,
+API and paste acceptance is recorded in [VIBEDICTATE_ACCEPTANCE.md](./VIBEDICTATE_ACCEPTANCE.md).
 
 ## Reporting bugs and ideas
 
-Open an [issue](https://github.com/AssemblyAI/blurt/issues) using one of the
+Open an [issue](https://github.com/dar1771/blurt/issues) using one of the
 templates. For bugs, include your macOS version and steps to reproduce. For a
 security issue, don't open a public issue — see [`SECURITY.md`](./SECURITY.md).
 

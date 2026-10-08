@@ -367,8 +367,8 @@ struct HTTPClientTests {
 
   @Test("AssemblyAIError descriptions are non-empty and include the status")
   func assemblyAIErrorDescriptions() {
-    #expect(AssemblyAIError.http(status: 500, message: "boom").errorDescription == "AssemblyAI error 500: boom")
-    #expect(AssemblyAIError.http(status: 503, message: nil).errorDescription == "AssemblyAI error 503")
+    #expect(AssemblyAIError.http(status: 500, message: "boom").errorDescription == "Ошибка AssemblyAI 500: boom")
+    #expect(AssemblyAIError.http(status: 503, message: nil).errorDescription == "Ошибка AssemblyAI 503")
     #expect(AssemblyAIError.malformedResponse.errorDescription?.isEmpty == false)
   }
 

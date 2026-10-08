@@ -20,7 +20,9 @@ struct OverlayUIStateTests {
     // `● REC` tag and a live meter over a mic that isn't open yet.
     (.connecting, .connecting),
     (.recording, .recording),
+    (.longMode, .longMode),
     (.transcribing, .processing),
+    (.normalizing, .normalizing),
     // `.injecting` is a *working* phase, so it must not project to `.idle`: the
     // shell reads an idle projection as "dismiss the pill" and would start a
     // fade-out mid-dictation, blinking the pill out and back in before "Pasted".
@@ -53,7 +55,7 @@ struct OverlayUIStateTests {
     // the reason reaches the user (hover tooltip + VoiceOver) instead of an
     // unexplained red flash.
     let phase = PipelinePhase.failed(.audioCaptureFailed(underlying: MicCaptureError.noInputDevice))
-    #expect(phase.overlayState == .error(message: "Audio capture failed: No microphone is available."))
+    #expect(phase.overlayState == .error(message: "Ошибка записи звука: Микрофон недоступен."))
   }
 
   @Test func missingKeyFailureMapsToIdle() {
@@ -76,7 +78,8 @@ struct OverlayUIStateTests {
     #expect(PipelinePhase.failed(.targetAppLost).setupBlocker == nil)
     // Neither is any non-failed phase.
     for phase in [
-      PipelinePhase.idle, .connecting, .recording, .transcribing, .injecting, .pasted, .noTarget,
+      PipelinePhase.idle, .connecting, .recording, .longMode, .transcribing, .normalizing,
+      .injecting, .pasted, .noTarget,
     ] {
       #expect(phase.setupBlocker == nil)
     }
@@ -103,12 +106,14 @@ struct OverlayUIStateAccessibilityLabelTests {
   /// One row per fixed-wording state. `.error` is excluded: its label is a rule
   /// (echo the carried message verbatim), not a constant, so it keeps its own test.
   static let labels: [(state: OverlayUIState, spoken: String)] = [
-    (.idle, "Blurt."),
-    (.connecting, "Connecting to the microphone."),
-    (.recording, "Recording."),
-    (.processing, "Processing."),
-    (.pasted, "Your dictation was pasted."),
-    (.noTarget, "No text field focused. Your dictation was copied to the clipboard."),
+    (.idle, "VibeDictate."),
+    (.connecting, "Подключение к микрофону."),
+    (.recording, "Идёт запись."),
+    (.longMode, "Идёт запись."),
+    (.processing, "Обработка записи."),
+    (.normalizing, "Обработка текста."),
+    (.pasted, "Текст вставлен."),
+    (.noTarget, "Поле ввода не выбрано. Текст скопирован в буфер обмена."),
   ]
 
   @Test("each state speaks its fixed label", arguments: labels)
@@ -148,6 +153,8 @@ struct OverlayUIStateNoticeDwellTests {
     // mid-press, dismissing it while the mic was still opening.
     #expect(OverlayUIState.connecting.noticeDwellSeconds == nil)
     #expect(OverlayUIState.recording.noticeDwellSeconds == nil)
+    #expect(OverlayUIState.longMode.noticeDwellSeconds == nil)
     #expect(OverlayUIState.processing.noticeDwellSeconds == nil)
+    #expect(OverlayUIState.normalizing.noticeDwellSeconds == nil)
   }
 }

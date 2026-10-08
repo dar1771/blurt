@@ -7,13 +7,7 @@ import SwiftUI
 /// single page, so the rows simply reflect live status (the controller polls
 /// while the window is open).
 struct PermissionsStepView: View {
-  var controller: WizardController
-
-  /// Observed rather than read once via `TriggerKeyStore()`: Settings is reachable
-  /// with ⌘, while this page is showing, so a one-shot read left the footer naming
-  /// the old key after a rebind until something else re-rendered the view. Same
-  /// `BoundTriggerKey` as `ReadyView` / `MenuBarScene`.
-  @BoundTriggerKey private var triggerKey
+  @ObservedObject var controller: WizardController
 
   /// Set when the user taps a settings button so the section can show a
   /// "waiting for you to come back" cue until the poll sees the grant.
@@ -42,7 +36,7 @@ struct PermissionsStepView: View {
   private var microphoneSection: some View {
     Section {
       permissionRow(
-        PermissionInfo(label: "Microphone", symbol: "mic.fill", buttonLabel: "Allow Microphone Access"),
+        PermissionInfo(label: "Микрофон", symbol: "mic.fill", buttonLabel: "Разрешить доступ к микрофону"),
         granted: controller.permissions.microphone,
         action: {
           Task {
@@ -60,14 +54,14 @@ struct PermissionsStepView: View {
         }
       )
     } header: {
-      Text("Permissions")
+      Text("Разрешения")
     } footer: {
       settingsFooter(
         opened: openedMicrophoneSettings,
         granted: controller.permissions.microphone,
-        waiting: "Waiting for you to turn on Blurt under Microphone…",
+        waiting: "Включите VibeDictate Dev в разделе «Микрофон»…",
         description:
-          "Blurt records only after you start dictating with \(triggerKey.label)."
+          "VibeDictate записывает звук только после нажатия правой ⌘ или ⌥."
       )
     }
   }
@@ -76,7 +70,7 @@ struct PermissionsStepView: View {
     Section {
       permissionRow(
         PermissionInfo(
-          label: "Accessibility", symbol: "accessibility", buttonLabel: "Open Accessibility Settings…"),
+          label: "Управление компьютером", symbol: "accessibility", buttonLabel: "Открыть настройки доступа…"),
         granted: controller.permissions.accessibility,
         action: {
           openedAccessibilitySettings = true
@@ -88,13 +82,13 @@ struct PermissionsStepView: View {
         settingsFooter(
           opened: openedAccessibilitySettings,
           granted: controller.permissions.accessibility,
-          waiting: "Waiting for you to turn on Blurt in the Accessibility list…",
-          description: "Blurt uses Accessibility to paste transcripts into the active app."
+          waiting: "Включите VibeDictate Dev в списке «Управление компьютером»…",
+          description: "VibeDictate использует этот доступ для вставки текста в активное приложение."
         )
         if accessibilityGrantLooksStuck && openedAccessibilitySettings
           && !controller.permissions.accessibility
         {
-          Text("If the Blurt toggle is already on, quit and reopen Blurt to refresh the grant.")
+          Text("Если переключатель уже включён, перезапустите VibeDictate Dev.")
         }
       }
       // Arms the stuck cue once the user heads to System Settings; if the grant
@@ -110,7 +104,7 @@ struct PermissionsStepView: View {
       // A grant that lands retires both cues: if the user later revokes it with
       // the wizard still open, the footer should re-arm from a fresh settings
       // tap rather than show the relaunch hint instantly with stale advice.
-      .onChange(of: controller.permissions.accessibility) {
+      .onChange(of: controller.permissions.accessibility) { _ in
         guard controller.permissions.accessibility else { return }
         openedAccessibilitySettings = false
         accessibilityGrantLooksStuck = false
@@ -153,7 +147,7 @@ struct PermissionsStepView: View {
       if granted {
         HStack(spacing: 4) {
           Image(systemName: "checkmark.circle.fill").foregroundStyle(BlurtBrand.accent)
-          Text("Granted").foregroundStyle(.secondary)
+          Text("Разрешено").foregroundStyle(.secondary)
         }
       } else {
         // Prominent (brand-green fill), like the API key row's button: the one

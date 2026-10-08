@@ -39,6 +39,12 @@ The lone-modifier `CGEventTap` trigger can't be synthesized by XCUITest (and
 needs an Accessibility-trusted process), so the harness drives the pipeline
 directly; the tap → `DictationKeyGate` wiring is covered by the engine unit tests.
 
+Each test launch ignores saved macOS window state, so a prior test closing its
+windows cannot make the next launch silently windowless. In UI-test mode, the
+main window opens the harness through SwiftUI's `openWindow` action after that
+action has been captured; tests therefore don't rely on automatic scene
+restoration to present either window.
+
 ## Running
 
 ```bash

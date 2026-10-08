@@ -33,7 +33,7 @@ import os
 /// mention is `User-Agent`, which every HTTP client sends regardless — see
 /// `UserAgent` for why naming Blurt and its version there is not an exception
 /// to the rule above but a request the rule never governed.
-public struct AssemblyAITranscriber: TranscriberProtocol {
+public struct AssemblyAITranscriber: TranscriberProtocol, ShortSTTClient {
   /// Latency instrumentation for the dictation round-trip. Findable via:
   ///   log show --predicate 'subsystem == "dev.alex.blurt" && category == "Transcriber"' --last 1h
   ///
@@ -99,6 +99,22 @@ public struct AssemblyAITranscriber: TranscriberProtocol {
   public func transcribe(
     frames: AsyncStream<Data>, sampleRate: Int, context: TranscriptionContext?
   ) async throws -> String {
+    transcript(from: try await requestTranscription(frames: frames, sampleRate: sampleRate, context: context))
+  }
+
+  public func transcribeShort(
+    frames: AsyncStream<Data>, sampleRate: Int, context: TranscriptionContext?
+  ) async throws -> ShortTranscription {
+    let response = try await requestTranscription(
+      frames: frames, sampleRate: sampleRate, context: context)
+    return ShortTranscription(
+      raw: response.text,
+      assemblyClean: response.llmResponse.trimmedNonEmpty())
+  }
+
+  private func requestTranscription(
+    frames: AsyncStream<Data>, sampleRate: Int, context: TranscriptionContext?
+  ) async throws -> DictationResponse {
     guard let apiKey = apiKeyProvider(), !apiKey.isEmpty else {
       throw BlurtError.apiKeyMissing
     }
@@ -141,7 +157,7 @@ public struct AssemblyAITranscriber: TranscriberProtocol {
       throw AssemblyAIError.malformedResponse
     }
     Self.logServerMetrics(response)
-    return transcript(from: response)
+    return response
   }
 
   /// Which of the two transcripts in the response to paste.
@@ -328,32 +344,6 @@ public struct AssemblyAITranscriber: TranscriberProtocol {
     }
     return data
   }
-
-  /// Best human-readable explanation for a non-2xx response: `error`, then
-  /// `detail` (the two documented shapes — see `ErrorResponse`, which is also
-  /// where the dropped `message` key is accounted for), then the raw body text,
-  /// trimmed and capped.
-  ///
-  /// The raw-body arm is deliberately kept. It is not compatibility with an old
-  /// API shape — it is what turns a response the API never promised (a proxy's HTML
-  /// 502, a captive-portal page) into something diagnosable instead of a bare
-  /// status code. Returns nil only for an empty body.
-  static func errorMessage(from data: Data) -> String? {
-    if let parsed = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-      let message = parsed.message
-    {
-      return message
-    }
-    guard let raw = String(bytes: data, encoding: .utf8).trimmedNonEmpty() else { return nil }
-    return String(raw.prefix(500))
-  }
-
-  // The request/response types this encodes and decodes — `DictationConfig`,
-  // `DictationResponse`, `ErrorResponse` — live in `DictationWireTypes.swift`,
-  // and the upload's instrumentation — `UploadProgress`,
-  // `DictationUploadDelegate` — in `DictationUploadMetrics.swift`. Both split
-  // out to stay within the lint file-length budget. They are the JSON contract
-  // and the measurement; everything here is the transport.
 }
 
 // `Duration.milliseconds` — the latency-logging conversion this file's request
@@ -378,12 +368,12 @@ enum AssemblyAIError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .http(let status, let message):
-      if let message { return "AssemblyAI error \(status): \(message)" }
-      return "AssemblyAI error \(status)"
+      if let message { return "Ошибка AssemblyAI \(status): \(message)" }
+      return "Ошибка AssemblyAI \(status)"
     case .malformedResponse:
-      return "Unexpected response from AssemblyAI."
+      return "Неожиданный ответ AssemblyAI."
     case .audioTooShort:
-      return "That recording was too short to transcribe."
+      return "Запись слишком короткая для распознавания."
     }
   }
 }

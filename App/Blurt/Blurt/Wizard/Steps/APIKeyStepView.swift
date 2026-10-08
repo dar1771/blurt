@@ -24,7 +24,7 @@ import SwiftUI
 /// stored, how to get one, and what went wrong when AssemblyAI rejects one —
 /// lives in the sheet, which has room for it without crowding the form.
 struct APIKeyStepView: View {
-  var apiKey: APIKeyModel
+  @ObservedObject var apiKey: APIKeyModel
 
   /// The key currently in the Keychain, loaded on appear (empty when none).
   @State private var savedKey = ""
@@ -38,7 +38,7 @@ struct APIKeyStepView: View {
 
   var body: some View {
     Section {
-      SettingRow(title: "API Key", systemImage: "key.fill") {
+      SettingRow(title: "Ключ API", systemImage: "key.fill") {
         HStack(spacing: 12) {
           statusLabel
           Button(display.editButtonTitle) { isPresentingEditor = true }
@@ -57,7 +57,7 @@ struct APIKeyStepView: View {
       // HIG asks you to explain why something is needed at the moment you ask
       // for it. This is the only place in the app that says audio leaves the
       // machine before the user has already gone looking for a key.
-      Text("Blurt sends your audio to AssemblyAI to transcribe it.")
+      Text("VibeDictate отправляет аудио в AssemblyAI для распознавания речи.")
     }
     .onAppear {
       savedKey = apiKey.current ?? ""
@@ -71,7 +71,7 @@ struct APIKeyStepView: View {
     // would leave the second window insisting "Not connected" and reopening its
     // sheet in first-connect mode. `hasAPIKey` is the observable edge; the
     // sheet's `onSaved` covers a rotation, which never moves it.
-    .onChange(of: apiKey.hasAPIKey) {
+    .onChange(of: apiKey.hasAPIKey) { _ in
       savedKey = apiKey.current ?? ""
     }
     .sheet(isPresented: $isPresentingEditor) {
@@ -109,7 +109,7 @@ struct APIKeyStepView: View {
 /// the trailing edge, and Return / Escape are scoped to the sheet rather than
 /// to the whole window.
 private struct APIKeyEditorSheet: View {
-  var apiKey: APIKeyModel
+  @ObservedObject var apiKey: APIKeyModel
   /// The key already stored, empty on first run. Drives the first-connect vs.
   /// rotate wording, and whether the "get a key" action is worth showing at all
   /// (once a key exists the user has clearly already found the dashboard).
@@ -175,7 +175,7 @@ private struct APIKeyEditorSheet: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 6) {
-        Text("AssemblyAI API Key")
+        Text("Ключ API AssemblyAI")
           .font(.headline)
         Text(display.rationale)
           .foregroundStyle(.secondary)
@@ -192,7 +192,7 @@ private struct APIKeyEditorSheet: View {
         // still renders as a checkbox here, but stating it keeps the reveal a
         // labeled checkbox (the Wi-Fi "Show password" idiom) rather than
         // leaving it to the ambient style.
-        Toggle("Show key", isOn: $isRevealed)
+        Toggle("Показать ключ", isOn: $isRevealed)
           .toggleStyle(.checkbox)
           .accessibilityIdentifier(UITestIdentifiers.apiKeyReveal)
       }
@@ -212,7 +212,7 @@ private struct APIKeyEditorSheet: View {
     .alert(
       saveFault?.title ?? "", isPresented: isPresentingSaveFault, presenting: saveFault
     ) { _ in
-      Button("OK", role: .cancel) {}
+      Button("ОК", role: .cancel) {}
     } message: { fault in
       Text(fault.message)
     }
@@ -224,10 +224,10 @@ private struct APIKeyEditorSheet: View {
   private var keyField: some View {
     Group {
       if isRevealed {
-        TextField("", text: $draft, prompt: Text("Paste your key"))
+        TextField("", text: $draft, prompt: Text("Вставьте ключ"))
           .accessibilityIdentifier(UITestIdentifiers.apiKeyField)
       } else {
-        SecureField("", text: $draft, prompt: Text("Paste your key"))
+        SecureField("", text: $draft, prompt: Text("Вставьте ключ"))
           .accessibilityIdentifier(UITestIdentifiers.apiKeyField)
       }
     }
@@ -235,10 +235,10 @@ private struct APIKeyEditorSheet: View {
     .disableAutocorrection(true)
     .focused($fieldFocused)
     .onSubmit(submit)
-    .onChange(of: draft) { errorMessage = nil }
+    .onChange(of: draft) { _ in errorMessage = nil }
     // `LabeledContent`'s label doesn't reliably reach the field itself, and the
     // title above is empty (the prompt is the placeholder), so name it here.
-    .accessibilityLabel("API Key")
+    .accessibilityLabel("Ключ API")
   }
 
   /// A recoverable error in red (no caution glyph — that reads as critical or
@@ -251,7 +251,7 @@ private struct APIKeyEditorSheet: View {
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier(UITestIdentifiers.apiKeyError)
     } else {
-      Text("Your key is stored in your Mac’s Keychain.")
+      Text("Ключ хранится в связке ключей вашего Mac.")
         .foregroundStyle(.secondary)
     }
   }
@@ -263,14 +263,14 @@ private struct APIKeyEditorSheet: View {
       // it sits at the leading edge, away from Cancel / the default action —
       // and the sheet stays open behind the browser, ready for the paste.
       if !display.isConnected {
-        Button("Get a Free Key") { openURL(APIKeyStore.dashboardURL) }
+        Button("Получить бесплатный ключ") { openURL(APIKeyStore.dashboardURL) }
           .accessibilityIdentifier(UITestIdentifiers.apiKeyGetKey)
       }
       Spacer(minLength: 12)
       if isValidating {
         ProgressView().controlSize(.small)
       }
-      Button("Cancel", action: cancel)
+      Button("Отмена", action: cancel)
         .keyboardShortcut(.cancelAction)
         .accessibilityIdentifier(UITestIdentifiers.apiKeyCancel)
       Button(display.commitButtonTitle, action: submit)

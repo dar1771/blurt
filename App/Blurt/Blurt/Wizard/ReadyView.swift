@@ -7,8 +7,9 @@ import SwiftUI
 /// own door to the Settings scene, alongside the standard app-menu
 /// "Settings…" (⌘,) and the menu-bar item.
 struct ReadyView: View {
-  var coordinator: AppCoordinator
+  @ObservedObject var coordinator: AppCoordinator
   var openSettings: () -> Void
+  var openHistory: () -> Void
   /// The style row's "+": opens Settings deep-linked to the Advanced pane,
   /// where styles are edited — a separate closure from `openSettings` so the
   /// plain Settings button keeps opening on General (see `MainWindowRoot`).
@@ -54,7 +55,7 @@ struct ReadyView: View {
       // and "Edit Styles…" is the row's empty state, so the feature is
       // discoverable from the main window rather than only from Settings.
       VStack(alignment: .leading, spacing: MainWindow.captionGap) {
-        Text("How Blurt cleans up your raw transcript")
+        Text("Как VibeDictate обрабатывает диктовку")
           .font(.callout)
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -72,17 +73,18 @@ struct ReadyView: View {
       // rows tall.
       RecentDictationsSection(entries: coordinator.recentDictations.displayed)
 
-      Button(action: openSettings) {
-        Label("Settings", systemImage: "gearshape")
-          .labelStyle(.titleAndIcon)
-          .symbolRenderingMode(.hierarchical)
+      HStack {
+        Button(action: openHistory) {
+          Label("История и аудио", systemImage: "waveform")
+        }
+        .glassButtonStyleCompat()
+        Button(action: openSettings) {
+          Label("Настройки", systemImage: "gearshape")
+        }
+        .glassButtonStyleCompat(prominent: true)
       }
-      // The system Liquid Glass button — hover/press chrome, edge highlights,
-      // and accessibility fallbacks come from the style, not hand-rolled fills.
-      // Prominent, so it takes the brand-green fill the design gives it: it's
-      // the only button on the window's closing line.
-      // Falls back to `.borderedProminent` on macOS 15–25 (see glassButtonStyleCompat).
-      .glassButtonStyleCompat(prominent: true)
+      .labelStyle(.titleAndIcon)
+      .symbolRenderingMode(.hierarchical)
 
       // The window's footer: a caption-level "Powered by AssemblyAI" line,
       // centered on the window's closing edge. A sibling of the sections
@@ -110,7 +112,7 @@ struct ReadyView: View {
       // if the literal ever fails to parse.
       if let url = Self.poweredByURL {
         HStack(spacing: 3) {
-          Text("Powered by").foregroundStyle(.secondary)
+          Text("Работает на базе").foregroundStyle(.secondary)
           Link("AssemblyAI", destination: url)
             .foregroundStyle(BlurtBrand.accent)
         }
@@ -161,7 +163,7 @@ struct ReadyView: View {
     // the mic bring-up also cancels rather than beeping.
     .background {
       if coordinator.isCapturing {
-        Button("Cancel Dictation") { coordinator.session.submit(.cancel) }
+        Button("Отменить диктовку") { coordinator.session.submit(.cancel) }
           .keyboardShortcut(.cancelAction)
           .hidden()
       }
@@ -176,21 +178,16 @@ struct ReadyView: View {
   /// Where the "Powered by AssemblyAI" footer link points.
   private static let poweredByURL = URL(string: "https://www.assemblyai.com/blurt")
 
-  /// The idle readout: "Tap **Right Command (⌘)** to start and stop." over
-  /// "Or hold it to talk, then release." — the key spelled out and bolded
-  /// inline (`TriggerKey.fullName`), no keycap chip. Static on purpose: which
-  /// style is in effect is the Style row's job to say — its selected button
-  /// is always visible right below — so repeating it here would be two
-  /// readouts to keep in agreement. Both lines take their ideal size: inside
-  /// the fixed-height slot a squeezed line can't fall back to wrapping, so
-  /// without this the slightest width shortfall rendered as a truncated key
-  /// name ("right…").
+  /// Both trigger keys fit on one line; the second line explains tap/hold.
   private var shortcutReadout: some View {
     VStack(spacing: 2) {
-      (Text("Tap ") + Text(triggerKey.fullName).bold() + Text(" to start and stop."))
-        .statusPrimaryLine()
-        .fixedSize()
-      Text("Or hold it to talk, then release.")
+      Text(
+        "Быстро: \(triggerKey.label). Точно: "
+          + "\(triggerKey == .rightCommand ? TriggerKey.rightOption.label : TriggerKey.rightCommand.label)."
+      )
+      .statusPrimaryLine()
+      .fixedSize()
+      Text("Ещё раз — стоп. Или удерживайте во время речи.")
         .statusSecondaryLine()
         .fixedSize()
     }
@@ -215,7 +212,7 @@ struct ReadyView: View {
           .pulsingOpacity(period: 1.2, minOpacity: 0.4, animated: !reduceMotion)
         // Bold as inline emphasis, the same role the key name's bold plays on
         // the idle face.
-        Text("Listening…")
+        Text("Слушаю…")
           .bold()
       }
       // The tier on the line, not the text, so the SF Symbol scales with the
@@ -234,62 +231,26 @@ struct ReadyView: View {
     // not worth hearing.
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
-      "Listening. \(listeningSubtitle(activeStyleName: activeStyleName))")
+      "Идёт запись. \(listeningSubtitle(activeStyleName: activeStyleName))")
   }
 
   /// The escape clause covers both end mechanisms honestly: a tap-mode
   /// dictation ends with another tap, a held key ends on release — the block
   /// can't know which started this one, so it names both.
   private func listeningSubtitle(activeStyleName: String?) -> String {
-    let escape = "Tap again or release to finish — Esc cancels."
+    let escape = "Повторное нажатие или отпускание — стоп. Esc — отмена."
     guard let activeStyleName else { return escape }
-    return "Blurting in \(activeStyleName). \(escape)"
+    return "Стиль: \(activeStyleName). \(escape)"
   }
 }
 
-/// The `blurt` wordmark over the status block: the brand-green mark
-/// (`Branding/blurt-ready-logo.png`, a 720×180 rasterization of the design's
-/// vector wordmark, so its 180×45 pt slot is fed 4× the pixels it needs and
-/// stays crisp at any display scale). Smoothly interpolated — it's curved
-/// letterforms now, not the pixel-art mark it replaced, which needed
-/// nearest-neighbor to keep its pixels square. A header mark, not the window's
-/// identity — the standard titlebar names the app — which is why it simply
-/// omits itself if the PNG can't load rather than swapping in a fallback
-/// identity view.
+/// The VibeDictate wordmark shown above the dictation controls.
 private struct ReadyBrandingView: View {
-  /// Loaded once for the process rather than per `body` evaluation: this view
-  /// sits in `ReadyView`, whose body re-runs on every new dictation
-  /// (`recentDictations.entries`), and a bundle lookup plus a PNG decode is not
-  /// something to re-do on the main thread each time.
-  ///
-  /// Left to the target's `SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor` default
-  /// rather than spelled `nonisolated(unsafe)`: `body` reads it on the main actor
-  /// either way, and this can't then break if a future SDK marks `NSImage`
-  /// `Sendable` (which would make the attribute an "unnecessary" warning, and the
-  /// app target builds with warnings-as-errors).
-  private static let logo: NSImage? = Bundle.main
-    .url(forResource: "blurt-ready-logo", withExtension: "png")
-    .flatMap(NSImage.init(contentsOf:))
-
   var body: some View {
-    if let image = Self.logo {
-      Image(nsImage: image)
-        // Drawn as a template tinted with the accent rather than shipped in its
-        // own color. The design draws the wordmark in two shades — `#01762F` on
-        // light, `#67AD82` on dark (its `Logo_Dark` / `Logo_Light` pair) — and
-        // those are precisely the accent's two appearances, so tinting gets the
-        // dark-mode variant for free from one asset. A fixed-color PNG kept the
-        // dark green on a dark window, where it goes muddy. It also means the
-        // mark and the accent-filled buttons beside it can't drift apart: they
-        // now resolve the same color, rather than agreeing by coincidence.
-        .renderingMode(.template)
-        .interpolation(.high)
-        .resizable()
-        .scaledToFit()
-        .frame(maxWidth: 180)
-        .foregroundStyle(BlurtBrand.accent)
-        .accessibilityLabel("Blurt logo")
-    }
+    Text("VibeDictate")
+      .font(.system(size: 36, weight: .bold, design: .rounded))
+      .foregroundStyle(BlurtBrand.accent)
+      .accessibilityAddTraits(.isHeader)
   }
 }
 

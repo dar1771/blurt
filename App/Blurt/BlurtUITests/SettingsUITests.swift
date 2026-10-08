@@ -6,6 +6,22 @@ import XCTest
 /// offline — the API-key submit is short-circuited in UI-test mode, so these
 /// never reach AssemblyAI or the real Keychain.
 final class SettingsUITests: BlurtUITestCase {
+  func testClipboardSharingStartsOffAndTestModeCannotAccessPairingKey() {
+    let settings = openSettingsWindow()
+    let clipboard = selectSettingsTab(settings, named: UITestIdentifiers.clipboardSettingsTab)
+    let toggle = clipboard.anyDescendant(identified: UITestIdentifiers.clipboardSyncToggle)
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Clipboard sharing toggle not found")
+    XCTAssertFalse(toggle.isEnabled, "Sharing must require an explicitly installed group key")
+    XCTAssertEqual("\(toggle.value ?? "")", "0")
+    let status = clipboard.staticTexts[UITestIdentifiers.clipboardSyncStatus]
+    XCTAssertTrue(status.exists)
+    waitForLabel(status, equals: "Выключено")
+    let createGroup = clipboard.buttons[UITestIdentifiers.clipboardCreateGroup]
+    scrollToSetting(createGroup, in: clipboard)
+    createGroup.click()
+    XCTAssertFalse(toggle.isEnabled, "UI-test mode must never generate a real pairing secret")
+  }
+
   /// Connecting a key dismisses the sheet and leaves the row showing the stored
   /// key's masked tail plus the "Change…" affordance.
   func testConnectingAPIKeyShowsMaskedRow() {
@@ -37,6 +53,10 @@ final class SettingsUITests: BlurtUITestCase {
     let sheet = openKeyEditor(settings)
 
     typeKey(UITestIdentifiers.invalidAPIKey, into: sheet)
+    sheet.checkBoxes[UITestIdentifiers.apiKeyReveal].click()
+    XCTAssertEqual(
+      sheet.textFields[UITestIdentifiers.apiKeyField].value as? String,
+      UITestIdentifiers.invalidAPIKey)
     sheet.buttons[UITestIdentifiers.apiKeySave].click()
 
     let error = sheet.staticTexts[UITestIdentifiers.apiKeyError]
@@ -67,12 +87,13 @@ final class SettingsUITests: BlurtUITestCase {
     let settings = openSettingsWindow()
 
     let picker = settings.popUpButtons[UITestIdentifiers.hotkeyPicker]
+    scrollToSetting(picker, in: settings)
     XCTAssertTrue(picker.waitForExistence(timeout: 10), "Hotkey picker not found")
     // Default is right ⌘; switch to right ⌥ and confirm the selection sticks.
     picker.click()
-    app.menuItems["right ⌥"].click()
+    app.menuItems["правую ⌥"].click()
 
-    XCTAssertEqual(picker.value as? String, "right ⌥")
+    XCTAssertEqual(picker.value as? String, "правую ⌥")
   }
 
   /// The microphone picker exists and defaults to following the system input.
@@ -84,24 +105,26 @@ final class SettingsUITests: BlurtUITestCase {
     let settings = openSettingsWindow()
 
     let picker = settings.popUpButtons[UITestIdentifiers.micPicker]
+    scrollToSetting(picker, in: settings)
     XCTAssertTrue(picker.waitForExistence(timeout: 10), "Microphone picker not found")
     let value = picker.value as? String ?? ""
     XCTAssertTrue(
-      value.hasPrefix("Same as system"),
+      value.hasPrefix("Как в системе"),
       "The picker should start on the system default (got: \(value))")
   }
 
-  /// The sound-cue picker changes the persisted selection. Selecting "None"
+  /// The sound-cue picker changes the persisted selection. Selecting "Без звука"
   /// works regardless of the runner's persisted starting value.
   func testSoundPickerChangesSelection() {
     let settings = openSettingsWindow()
 
     let picker = settings.popUpButtons[UITestIdentifiers.soundPicker]
+    scrollToSetting(picker, in: settings)
     XCTAssertTrue(picker.waitForExistence(timeout: 10), "Sound picker not found")
     picker.click()
-    app.menuItems["None"].click()
+    app.menuItems["Без звука"].click()
 
-    XCTAssertEqual(picker.value as? String, "None", "Choosing None should stick as the selection")
+    XCTAssertEqual(picker.value as? String, "Без звука", "Choosing None should stick as the selection")
   }
 
   /// Developer mode starts off (the UI-test launch resets persisted settings)
@@ -114,6 +137,7 @@ final class SettingsUITests: BlurtUITestCase {
     let advanced = selectSettingsTab(settings, named: UITestIdentifiers.advancedSettingsTab)
 
     let toggle = advanced.anyDescendant(identified: UITestIdentifiers.developerToggle)
+    scrollToSetting(toggle, in: advanced)
     XCTAssertTrue(toggle.waitForExistence(timeout: 10), "Developer mode toggle not found")
     XCTAssertEqual("\(toggle.value ?? "")", "0", "Developer mode should start switched off")
 
@@ -124,22 +148,23 @@ final class SettingsUITests: BlurtUITestCase {
 
   /// The Advanced pane's "Check for Updates" button runs the check and reports
   /// the result in a modal. Under UI testing the check is stubbed offline to
-  /// always report up-to-date, so clicking it surfaces the "You’re up to date"
+  /// always report up-to-date, so clicking it surfaces the "У вас последняя версия"
   /// result sheet deterministically (no network).
   func testCheckForUpdatesShowsResultAlert() {
     let settings = openSettingsWindow()
     let advanced = selectSettingsTab(settings, named: UITestIdentifiers.advancedSettingsTab)
 
     let button = advanced.anyDescendant(identified: UITestIdentifiers.updateCheck)
+    scrollToSetting(button, in: advanced)
     XCTAssertTrue(button.waitForExistence(timeout: 10), "Check for Updates button not found")
     button.click()
 
     let alert = app.sheets.firstMatch
     XCTAssertTrue(alert.waitForExistence(timeout: 10), "The check should present a result sheet")
     XCTAssertTrue(
-      alert.staticTexts["You’re up to date"].exists,
+      alert.staticTexts["У вас последняя версия"].exists,
       "The stubbed check should report up to date")
-    alert.buttons["OK"].click()
+    alert.buttons["ОК"].click()
   }
 
   /// The Advanced pane's reset button asks first, and dismissing the
@@ -148,7 +173,7 @@ final class SettingsUITests: BlurtUITestCase {
   /// Everything happens on the Advanced pane, against the developer-mode switch
   /// — one of the settings `PersistedSettings.resetAll` clears — so "nothing was
   /// reset" is observable without switching tabs or opening the API-key sheet.
-  /// That isn't tidiness: the sheet leaves its own "Cancel" in the accessibility
+  /// That isn't tidiness: the sheet leaves its own "Отмена" in the accessibility
   /// tree, which made an app-level query for the alert's Cancel ambiguous, and
   /// dismissing with Escape instead closed the settings window along with the
   /// alert and took the follow-up assertions with it.
@@ -166,25 +191,27 @@ final class SettingsUITests: BlurtUITestCase {
     // visible in the same pane. (The UI-test launch resets persisted settings,
     // so this starts off.)
     let developerMode = advanced.anyDescendant(identified: UITestIdentifiers.developerToggle)
+    scrollToSetting(developerMode, in: advanced)
     XCTAssertTrue(developerMode.waitForExistence(timeout: 10), "Developer mode toggle not found")
     developerMode.click()
     XCTAssertEqual("\(developerMode.value ?? "")", "1", "Clicking should switch developer mode on")
 
     let reset = advanced.anyDescendant(identified: UITestIdentifiers.installReset)
+    scrollToSetting(reset, in: advanced)
     XCTAssertTrue(reset.waitForExistence(timeout: 10), "Reset button not found")
     reset.click()
 
     // Queried off `app`, not off the settings window: a SwiftUI `.alert` isn't
     // necessarily a sheet of the window it was declared in, so the confirmation
     // is identified by the words on it wherever AppKit chose to put it.
-    let confirmationTitle = app.staticTexts["Reset Blurt?"]
+    let confirmationTitle = app.staticTexts["Сбросить VibeDictate?"]
     XCTAssertTrue(
       confirmationTitle.waitForExistence(timeout: 10),
       "Reset should ask for confirmation rather than acting on the click")
 
     // Every button query below is scoped to the alert rather than to `app`:
     // the runner mirrors an alert's buttons into a simulated Touch Bar, so an
-    // app-level "Cancel" matches twice and resolves to the Touch Bar copy,
+    // app-level "Отмена" matches twice and resolves to the Touch Bar copy,
     // which XCUITest refuses to click ("cannot be called with Touch Bar
     // elements"). AppKit decides whether a SwiftUI alert is a sheet on its
     // window or a free-standing dialog, so accept either.
@@ -196,13 +223,14 @@ final class SettingsUITests: BlurtUITestCase {
       return
     }
     XCTAssertTrue(
-      confirmation.buttons["Reset and Restart"].exists,
+      confirmation.buttons["Сбросить и перезапустить"].exists,
       "The confirmation should say that Blurt restarts when the reset finishes")
 
-    confirmation.buttons["Cancel"].click()
+    confirmation.buttons["Отмена"].click()
 
     XCTAssertTrue(
       confirmationTitle.waitForNonExistence(timeout: 5), "Cancel should dismiss the confirmation")
+    scrollToSetting(developerMode, in: advanced)
     XCTAssertEqual(
       "\(developerMode.value ?? "")", "1",
       "Cancelling the confirmation should leave the settings alone")
@@ -219,7 +247,7 @@ final class SettingsUITests: BlurtUITestCase {
       "Change… should re-open the sheet on the key field")
   }
 
-  /// "Cancel" in the sheet discards the edit and leaves the stored key's row
+  /// "Отмена" in the sheet discards the edit and leaves the stored key's row
   /// untouched instead of committing.
   func testCancelDiscardsKeyEditAndKeepsRow() {
     let settings = openSettingsWindow()
@@ -246,6 +274,7 @@ final class SettingsUITests: BlurtUITestCase {
     via identifier: String = UITestIdentifiers.apiKeyConnect
   ) -> XCUIElement {
     let button = settings.buttons[identifier]
+    scrollToSetting(button, in: settings)
     XCTAssertTrue(button.waitForExistence(timeout: 10), "API key row button (\(identifier)) not found")
     button.click()
     let sheet = settings.sheets.firstMatch

@@ -97,14 +97,14 @@ struct APIKeySubmissionTests {
   func invalidIsInline() {
     #expect(
       APIKeySubmission.Outcome.invalid.failureReport
-        == .inline(message: "AssemblyAI rejected that key. Double-check it and try again."))
+        == .inline(message: "AssemblyAI отклонил ключ. Проверьте его и попробуйте снова."))
   }
 
   @Test("an unreachable server is inline and recoverable")
   func unreachableIsInline() {
     #expect(
       APIKeySubmission.Outcome.unreachable.failureReport
-        == .inline(message: "Couldn't reach AssemblyAI. Check your connection and try again."))
+        == .inline(message: "Не удалось связаться с AssemblyAI. Проверьте интернет и попробуйте снова."))
   }
 
   @Test("a Keychain write fault is an alert, not inline text")
@@ -116,8 +116,8 @@ struct APIKeySubmissionTests {
       Issue.record("saveFailed must report as an alert, got \(String(describing: report))")
       return
     }
-    #expect(title == "Couldn’t Save Your Key")
-    #expect(message.contains("Keychain"))
+    #expect(title == "Не удалось сохранить ключ")
+    #expect(message.contains("связке ключей"))
   }
 
   @Test("every failing outcome reports something the user can read")

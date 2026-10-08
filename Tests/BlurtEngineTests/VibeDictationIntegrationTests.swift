@@ -1,0 +1,393 @@
+import AppKit
+import Foundation
+import Testing
+
+@testable import BlurtEngine
+
+@Suite("VibeDictate session integration", .timeLimit(.minutes(1)))
+struct VibeDictationIntegrationTests {
+  @Test("failed fast STT retains the OpenRouter provider and saved audio")
+  func failedFastProvider() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: FailingFastClient(),
+        preferAccurateRussian: true),
+      sttLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+    #expect(records.values.last?.status == .failed)
+    #expect(records.values.last?.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(records.values.last?.audioRelativePath == "Audio/integration.wav")
+    #expect(injector.recordID == nil)
+  }
+  @Test("accurate short command normalizes MAI text and records the actual STT provider")
+  func accurateShortUsesMAIAndNormalizer() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(),
+        longClient: IntegrationLongClient(raw: "я работаю со скиллс"),
+        shortRecordingClient: IntegrationLongClient(raw: "Я работаю со skills Claude Code."),
+        shortRecordingLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+        preferAccurateRussian: true),
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      normalizer: IntegrationNormalizer(result: .success("Я работаю со skills в Claude Code.")),
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+
+    let final = records.values.last
+    #expect(final?.rawTranscript == "Я работаю со skills Claude Code.")
+    #expect(final?.normalizedTranscript == "Я работаю со skills в Claude Code.")
+    #expect(final?.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(injector.text == "Я работаю со skills в Claude Code.")
+  }
+
+  @Test("fast command uses OpenRouter route without normalization")
+  func fastRouteWithoutNormalization() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let quality = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        preferAccurateRussian: true),
+      normalizer: IntegrationNormalizer(result: .success("normalized")))
+    let fast = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        preferAccurateRussian: true),
+      sttLabel: { "OpenRouter microsoft/mai-transcribe-2" },
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: quality, fastVibePipeline: fast, seams: .offline)
+
+    await session.run(.pressFast)
+    await session.release()
+    await session.awaitPipeline()
+
+    #expect(await session.phase == .pasted)
+    #expect(injector.text == "long raw")
+    #expect(records.values.last?.sttProvider == "OpenRouter microsoft/mai-transcribe-2")
+    #expect(records.values.last?.normalizedTranscript == nil)
+  }
+
+  @Test("short route persists every transcript stage under one job id")
+  func shortRouteEndToEnd() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let mic = StubMicCapture()
+    let writer = IntegrationAudioWriter()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        cutoverDelay: .seconds(60)),
+      makeAudioWriter: { _ in writer },
+      normalizer: IntegrationNormalizer(result: .success("normalized")),
+      normalizationModel: { "test/model" },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: mic, transcriber: StubTranscriber(mode: .transcript("unused")), injector: injector,
+      keyTermsProvider: { ["Swift"] }, textShortcutsProvider: { [] },
+      vibePipeline: pipeline, seams: .offline)
+
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+
+    let final = records.values.last
+    #expect(await session.phase == .pasted)
+    #expect(final?.rawTranscript == "raw")
+    #expect(final?.assemblyCleanTranscript == "assembly clean")
+    #expect(final?.normalizedTranscript == "normalized")
+    #expect(final?.pipelineMode == .short)
+    #expect(final?.sttProvider == "AssemblyAI Dictation API")
+    #expect(final?.insertionStatus == .inserted)
+    #expect(final?.audioRelativePath == "Audio/integration.wav")
+    #expect(final?.durationMs ?? 0 > 0)
+    #expect(Set(records.values.map(\.id)).count == 1)
+    #expect(injector.recordID == final?.id)
+    #expect(injector.text == "normalized")
+  }
+
+  @Test("cutover keeps WAV capture alive and long route falls back to raw")
+  func longRouteEndToEnd() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let mic = StubMicCapture()
+    let writer = IntegrationAudioWriter()
+    let long = IntegrationLongClient()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(waitForCancellation: true),
+        longClient: long, cutoverDelay: .zero),
+      makeAudioWriter: { _ in writer },
+      normalizer: IntegrationNormalizer(result: .failure(IntegrationFailure.failed)),
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: mic, transcriber: StubTranscriber(mode: .transcript("unused")), injector: injector,
+      keyTermsProvider: { ["OpenRouter"] }, textShortcutsProvider: { [] },
+      vibePipeline: pipeline, seams: .offline)
+
+    await session.press()
+    while await session.phase != .longMode { await Task.yield() }
+    #expect(await session.phase == .longMode)
+    await session.release()
+    await session.awaitPipeline()
+
+    let final = records.values.last
+    #expect(await session.phase == .pasted)
+    #expect(final?.pipelineMode == .long)
+    #expect(final?.sttProvider == "AssemblyAI Universal-2")
+    #expect(final?.rawTranscript == "long raw")
+    #expect(final?.assemblyCleanTranscript == nil)
+    #expect(final?.normalizedTranscript == nil)
+    #expect(injector.text == "long raw")
+    #expect(long.vocabulary == ["OpenRouter"])
+    #expect(writer.bytes == StubPCM.aboveMinimum)
+  }
+
+  @Test("cancel during STT removes the WAV and processing record")
+  func cancelDuringTranscription() async {
+    let records = IntegrationRecordBox()
+    let writer = IntegrationAudioWriter()
+    let injector = IntegrationInjector()
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(waitForCancellation: true),
+        longClient: IntegrationLongClient()),
+      makeAudioWriter: { _ in writer },
+      onRecordChanged: { records.append($0) },
+      onRecordDiscarded: { records.discard($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+
+    await session.press()
+    await session.release()
+    while await session.phase != .transcribing { await Task.yield() }
+    await session.cancel()
+    await session.awaitPipeline()
+
+    let finalPhase = await session.phase
+    #expect(finalPhase == .cancelled)
+    #expect(writer.bytes.isEmpty)
+    #expect(records.discarded == records.values.first?.id)
+    #expect(injector.recordID == nil)
+  }
+
+  @Test("a stale job is saved but never auto-inserted")
+  func staleJobIsNotInserted() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let (frames, feed) = AsyncStream.makeStream(of: Data.self)
+    var record = DictationRecord(job: DictationJob(generation: 1), status: .processing)
+    record.rawTranscript = "old result"
+    let route = STTRouter(
+      shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+      cutoverDelay: .seconds(60)
+    )
+    .start(
+      frames: frames, writer: IntegrationAudioWriter(), contextProvider: { nil }, vocabulary: [])
+    feed.yield(StubPCM.aboveMinimum)
+    feed.finish()
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector,
+      vibePipeline: VibeDictationPipeline(
+        router: STTRouter(
+          shortClient: IntegrationShortClient(), longClient: IntegrationLongClient()),
+        onRecordChanged: { records.append($0) }), seams: .offline)
+    await session.installVibeState(
+      route: route, writer: IntegrationAudioWriter(),
+      job: DictationJob(id: record.id, generation: 1), record: record,
+      measurements: (latestGeneration: 2, recordedByteCount: StubPCM.aboveMinimum.count))
+    await session.setPhaseForTesting(.transcribing)
+
+    await session.startInstalledVibePipeline()
+    await session.awaitPipeline()
+
+    #expect(records.values.last?.rawTranscript == "raw")
+    #expect(records.values.last?.status == .ready)
+    #expect(injector.recordID == nil)
+    #expect(await session.phase == .idle)
+  }
+
+  @Test("changing the frontmost application preserves history without auto-insertion")
+  func changedTargetIsNotInserted() async {
+    let records = IntegrationRecordBox()
+    let injector = IntegrationInjector()
+    let frontmost = Mutex("com.example.Editor")
+    var seams = DictationSession.Seams.offline
+    seams.captureFrontmost = {
+      CapturedFocus(
+        pid: 42, processName: "Editor",
+        bundleIdentifier: frontmost.withLock { $0 })
+    }
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector,
+      vibePipeline: VibeDictationPipeline(
+        router: STTRouter(
+          shortClient: IntegrationShortClient(), longClient: IntegrationLongClient()),
+        onRecordChanged: { records.append($0) }), seams: seams)
+
+    await session.press()
+    frontmost.withLock { $0 = "com.example.Chat" }
+    await session.release()
+    await session.awaitPipeline()
+
+    #expect(records.values.last?.status == .ready)
+    #expect(injector.recordID == nil)
+    #expect(await session.phase == .idle)
+  }
+}
+
+extension VibeDictationIntegrationTests {
+  @Test("copy-only completion keeps the precise insertion failure in history")
+  func quietInsertionReason() async {
+    let records = IntegrationRecordBox()
+    let injector = StubInjector()
+    await injector.setError(BlurtError.noEditableTarget)
+    let pipeline = VibeDictationPipeline(
+      router: STTRouter(
+        shortClient: IntegrationShortClient(), longClient: IntegrationLongClient(),
+        preferAccurateRussian: true),
+      makeAudioWriter: { _ in IntegrationAudioWriter() },
+      onRecordChanged: { records.append($0) })
+    let session = DictationSession(
+      mic: StubMicCapture(), transcriber: StubTranscriber(mode: .transcript("unused")),
+      injector: injector, vibePipeline: pipeline, seams: .offline)
+    await session.press()
+    await session.release()
+    await session.awaitPipeline()
+    #expect(records.values.last?.status == .ready)
+    #expect(records.values.last?.rawTranscript == "long raw")
+    #expect(records.values.last?.insertionStatus == .targetLost)
+    #expect(records.values.last?.errorMessage == BlurtError.noEditableTarget.localizedDescription)
+    #expect(await session.phase == .noTarget)
+  }
+}
+
+extension DictationSession {
+  func startInstalledVibePipeline() {
+    pipelineTask = Task { [weak self] in await self?.runVibeTranscribeNormalizeInject() }
+  }
+
+  func setPhaseForTesting(_ phase: PipelinePhase) {
+    setPhase(phase)
+  }
+
+  func installVibeState(
+    route: STTRoutingSession, writer: any LocalAudioWriter, job: DictationJob, record: DictationRecord,
+    measurements: (latestGeneration: UInt64, recordedByteCount: Int)
+  ) {
+    routingSession = route
+    localAudioWriter = writer
+    currentJob = job
+    currentRecord = record
+    latestGeneration = measurements.latestGeneration
+    recordedByteCount = measurements.recordedByteCount
+  }
+}
+
+private enum IntegrationFailure: Error, Sendable { case failed }
+
+private struct FailingFastClient: LongSTTClient {
+  func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
+    throw OpenRouterTranscriptionError.httpStatus(429)
+  }
+}
+
+private struct IntegrationShortClient: ShortSTTClient {
+  let waitForCancellation: Bool
+
+  init(waitForCancellation: Bool = false) {
+    self.waitForCancellation = waitForCancellation
+  }
+
+  func transcribeShort(
+    frames: AsyncStream<Data>, sampleRate: Int, context: TranscriptionContext?
+  ) async throws -> ShortTranscription {
+    for await _ in frames {}
+    if waitForCancellation { try await Task.sleep(for: .seconds(60)) }
+    return ShortTranscription(raw: "raw", assemblyClean: "assembly clean")
+  }
+}
+
+private final class IntegrationLongClient: LongSTTClient, Sendable {
+  private let terms = Mutex<[String]>([])
+  private let raw: String
+
+  init(raw: String = "long raw") { self.raw = raw }
+
+  func transcribe(audioFileURL: URL, vocabulary: [String]) async throws -> String {
+    terms.withLock { $0 = vocabulary }
+    return raw
+  }
+
+  var vocabulary: [String] { terms.withLock { $0 } }
+}
+
+private struct IntegrationNormalizer: TextNormalizer {
+  let result: Result<String, IntegrationFailure>
+
+  func normalize(rawTranscript: String, vocabulary: [String]) async throws -> String {
+    try result.get()
+  }
+}
+
+private final class IntegrationAudioWriter: LocalAudioWriter, Sendable {
+  private let data = Mutex(Data())
+  var relativePath: String { get async { "Audio/integration.wav" } }
+  var fileURL: URL { get async { URL(fileURLWithPath: "/tmp/integration.wav") } }
+  func append(_ pcm: Data) async throws { data.withLock { $0.append(pcm) } }
+  func finish() async throws {}
+  func cancelAndDelete() async { data.withLock { $0.removeAll() } }
+  var bytes: Data { data.withLock { $0 } }
+}
+
+private final class IntegrationInjector: InjectorProtocol, Sendable {
+  private struct State {
+    var recordID: UUID?
+    var text: String?
+  }
+  private let state = Mutex(State())
+
+  func setTargetApp(_ app: NSRunningApplication?) async {}
+  func insert(_ text: String, after priorText: String?, windowTitle: String?) async throws {}
+  func insert(
+    recordID: UUID, text: String, after priorText: String?, windowTitle: String?
+  ) async throws {
+    state.withLock { $0 = State(recordID: recordID, text: text) }
+  }
+  var recordID: UUID? { state.withLock { $0.recordID } }
+  var text: String? { state.withLock { $0.text } }
+}
+
+private final class IntegrationRecordBox: Sendable {
+  private struct State {
+    var values: [DictationRecord] = []
+    var discarded: UUID?
+  }
+  private let state = Mutex(State())
+  func append(_ record: DictationRecord) { state.withLock { $0.values.append(record) } }
+  func discard(_ id: UUID) { state.withLock { $0.discarded = id } }
+  var values: [DictationRecord] { state.withLock { $0.values } }
+  var discarded: UUID? { state.withLock { $0.discarded } }
+}

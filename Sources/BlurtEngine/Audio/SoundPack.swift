@@ -30,7 +30,7 @@ public struct SoundPack: Sendable, Hashable, Identifiable {
   /// The "no sound" choice. Not part of any catalog — `SoundPackCatalog` keeps it
   /// reachable no matter what voices it was handed, so "silence the cues" is
   /// never a choice a host's catalog can take away.
-  public static let none = SoundPack(id: "none", label: "None", group: nil)
+  public static let none = SoundPack(id: "none", label: "Без звука", group: nil)
 
   /// True for the `.none` pack — the one voice with no cue files and no synth
   /// credit. A catalog entry always carries a `group` (its picker section), so its

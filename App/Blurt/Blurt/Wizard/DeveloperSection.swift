@@ -20,11 +20,11 @@ struct DeveloperSection: View {
   var body: some View {
     Section {
       Toggle(isOn: $developerMode) {
-        Label("Developer mode", systemImage: "hammer")
+        Label("Режим разработчика", systemImage: "hammer")
       }
       .accessibilityIdentifier(UITestIdentifiers.developerToggle)
     } header: {
-      Text("Developer")
+      Text("Разработчик")
     } footer: {
       // Both home-abbreviated paths are derived in the engine next to the URLs
       // the writers append to, so this label can never drift from where the logs
@@ -32,8 +32,8 @@ struct DeveloperSection: View {
       // selected and copied without picking up punctuation — which is also why
       // the first path is followed by a plain space rather than a comma.
       Text(
-        "Logs each dictation to \(DictationLog.defaultDisplayPath) "
-          + "and each failure to \(DictationLog.defaultErrorDisplayPath)"
+        "Записи сохраняются в \(DictationLog.defaultDisplayPath) "
+          + "ошибки — в \(DictationLog.defaultErrorDisplayPath)"
       )
       .textSelection(.enabled)
     }
@@ -71,26 +71,31 @@ struct ResetSection: View {
     /// Only shown when part of the sweep survived. A clean reset says nothing:
     /// the app restarting into setup is the confirmation.
     case failed(InstallReset.AlertContent)
+    case syncFailed(String?)
 
     var title: String {
       switch self {
-      case .confirm: "Reset Blurt?"
+      case .confirm: "Сбросить VibeDictate?"
       case .failed(let content): content.title
+      case .syncFailed: "Не удалось полностью сбросить VibeDictate"
       }
     }
 
     var message: String {
       switch self {
       case .confirm:
-        "This can’t be undone. Your AssemblyAI API key, every setting, the dictation logs, and "
-          + "Blurt’s microphone, accessibility and input-monitoring permissions are all removed.\n\n"
-          + "Blurt then restarts and takes you back through setup."
+        "Это действие нельзя отменить. Ключ AssemblyAI, код группы и полученные файлы общего буфера, настройки, журналы диктовок и "
+          + "разрешения VibeDictate на микрофон и управление компьютером будут удалены.\n\n"
+          + "Затем приложение перезапустится и откроет первоначальную настройку."
       case .failed(let content): content.message
+      case .syncFailed(let detail):
+        "Не удалось удалить код группы или полученные файлы общего буфера. " + (detail ?? "Повторите сброс.")
       }
     }
   }
 
-  let coordinator: AppCoordinator
+  @ObservedObject var coordinator: AppCoordinator
+  @ObservedObject var clipboardModel: ClipboardSyncModel
 
   @State private var prompt: Prompt?
 
@@ -98,16 +103,16 @@ struct ResetSection: View {
     Section {
       // Ellipsis for the same reason as "Connect…" and "Add Style…": the button
       // opens something rather than completing the action.
-      SettingRow(title: "Reset Blurt", systemImage: "arrow.counterclockwise") {
-        Button("Reset…", role: .destructive) { prompt = .confirm }
+      SettingRow(title: "Сбросить VibeDictate", systemImage: "arrow.counterclockwise") {
+        Button("Сбросить…", role: .destructive) { prompt = .confirm }
           .accessibilityIdentifier(UITestIdentifiers.installReset)
       }
     } header: {
-      Text("Reset")
+      Text("Сброс")
     } footer: {
       Text(
-        "Deletes your AssemblyAI API key, clears every setting, removes the dictation logs, and "
-          + "revokes Blurt’s microphone, accessibility and input-monitoring permissions.")
+        "Удаляет ключ AssemblyAI, настройки и журналы диктовок, а также сбрасывает "
+          + "разрешения VibeDictate на микрофон и управление компьютером.")
     }
     // Alert buttons are addressed by the words on them in the UI suite, like the
     // update alert's "OK" — an identifier here wouldn't survive AppKit's alert
@@ -119,10 +124,10 @@ struct ResetSection: View {
         // Deferred a turn: setting `prompt` straight from an alert action
         // re-enters presentation while this alert is still dismissing, and
         // SwiftUI swallows it — so the failure report would never appear.
-        Button("Reset and Restart", role: .destructive) { Task { @MainActor in reset() } }
-        Button("Cancel", role: .cancel) {}
-      case .failed:
-        Button("OK", role: .cancel) {}
+        Button("Сбросить и перезапустить", role: .destructive) { Task { @MainActor in await reset() } }
+        Button("Отмена", role: .cancel) {}
+      case .failed, .syncFailed:
+        Button("ОК", role: .cancel) {}
       }
     } message: { prompt in
       Text(prompt.message)
@@ -143,7 +148,8 @@ struct ResetSection: View {
   /// `AppDelegate.runAccessibilityGrantMigration` follows). The key is cleared
   /// through the model's own storage seam, so a UI-test run sweeps its in-memory
   /// store instead of the developer's Keychain item.
-  private func reset() {
+  private func reset() async {
+    let syncCleared = await clipboardModel.reset()
     let report = InstallReset(
       bundleID: Bundle.main.bundleIdentifier ?? HostIdentity.current.subsystem,
       keyStore: coordinator.apiKey.storage
@@ -155,6 +161,10 @@ struct ResetSection: View {
     // Nothing to report means the install is clean, and the fresh copy opening
     // on the setup wizard is the whole confirmation — a success alert would only
     // be one more click between the user and the setup they came for.
+    if !syncCleared {
+      prompt = .syncFailed(report?.message)
+      return
+    }
     guard let report else {
       restart()
       return

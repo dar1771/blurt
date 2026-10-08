@@ -18,9 +18,9 @@ struct UpdateAlertContentTests {
   @Test("up to date names the running version and only dismisses")
   func upToDate() throws {
     let content = UpdateAlertContent.upToDate(current: try version("0.1.31"))
-    #expect(content.title == "You’re up to date")
-    #expect(content.message == "Blurt 0.1.31 is the latest version.")
-    #expect(content.buttons == ["OK"])
+    #expect(content.title == "У вас последняя версия")
+    #expect(content.message == "Blurt 0.1.31 — последняя версия.")
+    #expect(content.buttons == ["ОК"])
     // Nothing to download, so the shell must not open anything.
     #expect(content.downloadURL == nil)
     #expect(content.style == .informational)
@@ -30,8 +30,8 @@ struct UpdateAlertContentTests {
   func available() throws {
     let content = UpdateAlertContent.available(
       current: try version("0.1.31"), latest: try version("0.2.0"), dmgURL: dmg)
-    #expect(content.title == "A new version of Blurt is available")
-    #expect(content.message == "Blurt 0.2.0 is available—you have 0.1.31. Download it now?")
+    #expect(content.title == "Доступна новая версия Blurt")
+    #expect(content.message == "Доступна Blurt 0.2.0; у вас 0.1.31. Скачать сейчас?")
     #expect(content.downloadURL == dmg)
   }
 
@@ -40,17 +40,17 @@ struct UpdateAlertContentTests {
     let content = UpdateAlertContent.available(
       current: try version("1.0"), latest: try version("1.1"), dmgURL: dmg)
     // The shell opens `downloadURL` when the *first* button comes back, so the
-    // order here is load-bearing: flipping it would make "Later" download.
-    #expect(content.buttons == ["Download", "Later"])
-    #expect(content.buttons.first == "Download")
+    // order here is load-bearing: flipping it would make "Позже" download.
+    #expect(content.buttons == ["Скачать", "Позже"])
+    #expect(content.buttons.first == "Скачать")
   }
 
   @Test("couldn't check is a warning with no download")
   func checkFailed() {
     let content = UpdateAlertContent.checkFailed
-    #expect(content.title == "Couldn’t check for updates")
-    #expect(content.message == "Check your internet connection and try again.")
-    #expect(content.buttons == ["OK"])
+    #expect(content.title == "Не удалось проверить обновления")
+    #expect(content.message == "Проверьте интернет и попробуйте снова.")
+    #expect(content.buttons == ["ОК"])
     #expect(content.downloadURL == nil)
     // The one caution: a result the user asked for isn't a warning, a failure is.
     #expect(content.style == .warning)

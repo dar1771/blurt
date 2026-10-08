@@ -1,11 +1,14 @@
 import SwiftUI
 
-/// App-menu commands. The standard ⌘, "Settings…" item is supplied by the
-/// `Settings` scene itself (see `BlurtApp`).
+/// App-menu commands.
 struct BlurtCommands: Commands {
   var appDelegate: AppDelegate
 
   var body: some Commands {
+    CommandGroup(replacing: .appSettings) {
+      Button("Настройки…") { appDelegate.openSettings() }
+        .keyboardShortcut(",", modifiers: .command)
+    }
     // "Check for Updates…" sits just below "About Blurt" in the app menu — the
     // conventional macOS spot, and the placement Sparkle's own SwiftUI guidance
     // uses (`CommandGroup(after: .appInfo)`). It runs the same check as the
@@ -13,7 +16,13 @@ struct BlurtCommands: Commands {
     // The ellipsis marks that it goes off and does work (and may present a
     // dialog).
     CommandGroup(after: .appInfo) {
-      Button("Check for Updates…") { appDelegate.updateCheckModel.checkForUpdates() }
+      Button("Проверить обновления…") { appDelegate.updateCheckModel.checkForUpdates() }
+    }
+    CommandMenu("Диктовка") {
+      Button("Вставить последнюю запись") { appDelegate.historyModel.insertLast() }
+        .keyboardShortcut("v", modifiers: [.option, .command])
+      Button("Открыть историю") { appDelegate.openHistory() }
+        .keyboardShortcut("h", modifiers: [.option, .command])
     }
     // Blurt ships no help book, so SwiftUI's default Help menu would show a
     // dead "Blurt Help" item that opens nothing. Remove it rather than leave

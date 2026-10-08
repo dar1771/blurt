@@ -6,7 +6,7 @@ import SwiftUI
 /// hold (push-to-talk), or both; changes are persisted and pushed to the event
 /// tap immediately.
 struct HotkeyStepView: View {
-  var coordinator: AppCoordinator
+  @ObservedObject var coordinator: AppCoordinator
 
   // `0` is "no keycode persisted", not a default binding: the unset default belongs
   // to `TriggerKey.fromPersisted` (below), which maps any unknown keycode to right
@@ -53,7 +53,7 @@ struct HotkeyStepView: View {
   var body: some View {
     Section {
       PickerSettingRow(
-        title: "Dictation key", systemImage: "keyboard",
+        title: "Клавиша быстрого режима", systemImage: "keyboard",
         accessibilityID: UITestIdentifiers.hotkeyPicker, selection: selection
       ) {
         ForEach(TriggerKey.allCases, id: \.self) { key in
@@ -61,7 +61,7 @@ struct HotkeyStepView: View {
         }
       }
       PickerSettingRow(
-        title: "Activation", systemImage: "hand.tap",
+        title: "Способ запуска", systemImage: "hand.tap",
         accessibilityID: UITestIdentifiers.activationPicker, selection: activation
       ) {
         ForEach(TriggerActivation.allCases, id: \.self) { mode in
@@ -69,13 +69,15 @@ struct HotkeyStepView: View {
         }
       }
     } header: {
-      Text("Shortcut")
+      Text("Горячая клавиша")
     } footer: {
       // The engine owns the wording (`TriggerActivation.guidance`), so the hint
       // always describes the mode the gate will actually apply. Each variant is
       // no longer than the tap-or-hold sentence shipped here before the picker
       // existed, so the footer never grows the pane.
-      Text(TriggerActivation.fromPersisted(activationRaw).guidance)
+      Text(
+        "Вторая правая клавиша запускает точный режим. "
+          + TriggerActivation.fromPersisted(activationRaw).guidance)
     }
   }
 }

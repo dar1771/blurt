@@ -22,8 +22,8 @@ enum MicCaptureError: LocalizedError {
 
   var errorDescription: String? {
     switch self {
-    case .noInputDevice: "No microphone is available."
-    case .inputNeverDelivered: "The microphone didn't start."
+    case .noInputDevice: "Микрофон недоступен."
+    case .inputNeverDelivered: "Не удалось включить микрофон."
     }
   }
 }

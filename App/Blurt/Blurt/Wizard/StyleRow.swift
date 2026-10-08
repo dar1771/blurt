@@ -132,7 +132,7 @@ struct StyleRow: View {
   /// Trailing colon, the macOS convention for a label introducing a control
   /// (the Settings panes' `Form` rows get theirs from the form; this one is a
   /// bare `HStack`, so it says it).
-  private static let label = "Output Styles:"
+  private static let label = "Стиль:"
 
   /// The gap between the label and the bar, and the card's own inset — both
   /// subtracted by `Bar.titleBudget`. 9 vertical, so the card lands on the
@@ -177,7 +177,7 @@ struct StyleRow: View {
     /// whitespace is exactly the sort of thing a text layout is entitled to
     /// trim, and a trimmed pad would silently collapse the bar.
     static let editTitle: String = {
-      var padded = "Edit Styles…"
+      var padded = "Изменить стили…"
       while width(padded + "\u{00A0}") <= titleBudget { padded += "\u{00A0}" }
       return padded
     }()

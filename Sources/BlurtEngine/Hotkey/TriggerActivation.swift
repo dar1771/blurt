@@ -26,9 +26,9 @@ public enum TriggerActivation: String, CaseIterable, Sendable {
   /// Menu-picker title, e.g. "Tap or hold".
   public var label: String {
     switch self {
-    case .tapOrHold: return "Tap or hold"
-    case .tap: return "Tap"
-    case .hold: return "Hold"
+    case .tapOrHold: return "Нажать или удерживать"
+    case .tap: return "Нажать"
+    case .hold: return "Удерживать"
     }
   }
 
@@ -38,11 +38,11 @@ public enum TriggerActivation: String, CaseIterable, Sendable {
   public var guidance: String {
     switch self {
     case .tapOrHold:
-      return "Tap to start and tap again to stop, or hold the key and release to dictate."
+      return "Нажмите для начала и повторно для остановки либо удерживайте во время речи."
     case .tap:
-      return "Tap to start and tap again to stop dictating."
+      return "Нажмите для начала записи и повторно для остановки."
     case .hold:
-      return "Hold the key while you speak and release to stop dictating."
+      return "Удерживайте клавишу во время речи и отпустите для остановки."
     }
   }
 

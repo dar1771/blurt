@@ -14,10 +14,8 @@ struct MicrophoneStepView: View {
   // `HotkeyStepView` for why the view must not restate it.
   @AppStorage(MicDeviceStore.defaultsKey) private var micDeviceUID = ""
 
-  /// The input devices present when the pane appeared, re-read each time it
-  /// does. A snapshot rather than a live listener: the picker's menu is built
-  /// when it opens, and a device plugged in mid-session shows up on the next
-  /// visit — the capture path resolves the UID fresh at every press regardless.
+  /// The input devices present on the last refresh. The capture path resolves
+  /// the UID fresh at every press regardless of this snapshot.
   ///
   @State private var devices: [AudioInputDevice] = []
   /// Whether `devices` has been read yet, as distinct from "read, and empty".
@@ -54,13 +52,13 @@ struct MicrophoneStepView: View {
   }
 
   private var systemDefaultLabel: String {
-    systemDefaultName.map { "Same as system (\($0))" } ?? "Same as system"
+    systemDefaultName.map { "Как в системе (\($0))" } ?? "Как в системе"
   }
 
   var body: some View {
     Section {
       PickerSettingRow(
-        title: "Input device", systemImage: "mic",
+        title: "Устройство ввода", systemImage: "mic",
         accessibilityID: UITestIdentifiers.micPicker, selection: selection
       ) {
         Text(systemDefaultLabel).tag(MicDeviceSelection.systemDefault)
@@ -68,13 +66,18 @@ struct MicrophoneStepView: View {
           Text(device.name).tag(MicDeviceSelection.pinned(uid: device.uid))
         }
         if let missingPin {
-          Text("Disconnected microphone").tag(missingPin)
+          Text("Микрофон отключён").tag(missingPin)
         }
       }
+      Button("Обновить список микрофонов") {
+        Task { await reloadDevices() }
+      }
     } header: {
-      Text("Microphone")
+      Text("Микрофон")
     } footer: {
-      Text("Dictation records from this microphone. While it isn't connected, the system default is used.")
+      Text(
+        "Для микрофона iPhone сначала подключите его в настройках звука macOS, затем обновите список. Если выбранный микрофон отключён, используется системный."
+      )
     }
     // Off the main actor, and `.task` rather than `.onAppear` to have somewhere
     // to await: enumerating devices is the first thing to touch AVFoundation's
@@ -82,13 +85,15 @@ struct MicrophoneStepView: View {
     // cold (~0.02 ms once warm). On a first-run install — where `AppCoordinator`
     // skips its launch warm-up because microphone access hasn't been granted —
     // that ran inline while this window was being laid out.
-    .task {
-      let snapshot = await Task.detached {
-        (devices: AudioInputDevices.all(), defaultName: AudioInputDevices.systemDefaultInputName())
-      }.value
-      devices = snapshot.devices
-      systemDefaultName = snapshot.defaultName
-      devicesLoaded = true
-    }
+    .task { await reloadDevices() }
+  }
+
+  private func reloadDevices() async {
+    let snapshot = await Task.detached {
+      (devices: AudioInputDevices.all(), defaultName: AudioInputDevices.systemDefaultInputName())
+    }.value
+    devices = snapshot.devices
+    systemDefaultName = snapshot.defaultName
+    devicesLoaded = true
   }
 }

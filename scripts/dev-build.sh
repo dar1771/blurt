@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Blurt.app for local development and install it to /Applications.
+# Build VibeDictate Dev.app for local development and install it to /Applications.
 #
 # Unlike check.sh (which builds with codesigning DISABLED for CI), this runs a
 # fully signed build so the project.yml postBuildScripts "Install to
@@ -8,10 +8,14 @@
 # cert. That stable install path is required for TCC to register Accessibility /
 # Input-Monitoring / Microphone grants (DerivedData/tmp paths never do).
 #
-# It installs as "Blurt Dev.app" under the bundle id dev.alex.blurt.dev, so it
-# sits beside a released Blurt instead of replacing it: separate Privacy &
+# It installs as "VibeDictate Dev.app" under the bundle id app.vibedictate.dev, so it
+# sits beside a release instead of replacing it: separate Privacy &
 # Security rows, separate settings, either one runnable. Grant the dev app its
 # own permissions once and they stick across rebuilds.
+#
+# Set VIBEDICTATE_DEVELOPMENT_TEAM to sign with a different local Apple
+# Development team (for example, a contributor's Personal Team). The release
+# team's setting in project.yml remains unchanged.
 #
 # Pipes xcodebuild through xcbeautify when available (brew install xcbeautify).
 # Safe to re-run.
@@ -40,7 +44,7 @@ if [ -d "$DERIVED" ]; then
   fi
 fi
 
-info "Building Blurt (Debug-Local) from clean and installing to /Applications"
+info "Building VibeDictate Dev (Debug-Local) from clean and installing to /Applications"
 set -o pipefail
 # The Debug-Local configuration is a debug build with UITEST_HOOKS off (defined
 # in project.yml), so this local build excludes the XCUITest harness and the
@@ -57,6 +61,24 @@ xcodebuild \
   -configuration Debug-Local \
   -destination 'platform=macOS' \
   -derivedDataPath "$DERIVED" \
+  "DEVELOPMENT_TEAM=${VIBEDICTATE_DEVELOPMENT_TEAM:-B2VQF7Q2QY}" \
   clean build | "${PRETTY[@]}"
 
-info "Done. Launch with: open -a 'Blurt Dev'"
+installed_app="/Applications/VibeDictate Dev.app"
+if [ ! -d "$installed_app" ]; then
+  installed_app="$HOME/Applications/VibeDictate Dev.app"
+fi
+
+# Copying a new bundle does not replace a process already running from it.
+# Restart it here so a manual acceptance test cannot exercise yesterday's code.
+running_pids="$(pgrep -f "$installed_app/Contents/MacOS/Blurt" || true)"
+if [ -n "$running_pids" ]; then
+  info "Restarting the running VibeDictate Dev to load the installed build"
+  while IFS= read -r running_pid; do
+    kill -TERM "$running_pid"
+  done <<<"$running_pids"
+  sleep 2
+  open -a "$installed_app"
+fi
+
+info "Done. Launch with: open -a 'VibeDictate Dev'"

@@ -15,8 +15,8 @@ import SwiftUI
 /// lives on the ready screen and Settings) — onboarding isn't the place to check
 /// for updates.
 struct WizardView: View {
-  var controller: WizardController
-  var coordinator: AppCoordinator
+  @ObservedObject var controller: WizardController
+  @ObservedObject var coordinator: AppCoordinator
 
   var body: some View {
     VStack(spacing: 0) {
@@ -48,10 +48,10 @@ struct WizardView: View {
       OnboardingBrandMark()
 
       VStack(alignment: .leading, spacing: 4) {
-        Text("Set up Blurt")
+        Text("Настройка VibeDictate")
           .font(.title2)
           .fontWeight(.bold)
-        Text("Add your API key, then allow Microphone and Accessibility access.")
+        Text("Добавьте ключ API и разрешите доступ к микрофону и управлению компьютером.")
           .font(.body)
           .foregroundStyle(.secondary)
       }

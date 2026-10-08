@@ -1,3 +1,4 @@
+import AppKit
 import BlurtEngine
 import CoreGraphics
 import os
@@ -38,6 +39,9 @@ final class DictationKeyTap {
   /// cancel from the gate): recovery must only cancel a live *recording*, never
   /// a transcript already in flight — see `DictationSession.cancelRecording`.
   private let onRecordingDiscarded: @Sendable () -> Void
+  private let onInsertLast: @MainActor @Sendable () -> Void
+  private let onOpenHistory: @MainActor @Sendable () -> Void
+  private let keyProvider: () -> TriggerKey
 
   /// The engine-side event router (keycode relevance, down/up edge dedup, and
   /// the gate's tap/hold state machine — all unit-tested in BlurtEngine).
@@ -66,12 +70,18 @@ final class DictationKeyTap {
     onStart: @escaping @Sendable () -> Void,
     onStop: @escaping @Sendable () -> Void,
     onCancel: @escaping @Sendable () -> Void,
-    onRecordingDiscarded: @escaping @Sendable () -> Void
+    onRecordingDiscarded: @escaping @Sendable () -> Void,
+    keyProvider: @escaping () -> TriggerKey = { TriggerKeyStore().triggerKey },
+    onInsertLast: @escaping @MainActor @Sendable () -> Void = {},
+    onOpenHistory: @escaping @MainActor @Sendable () -> Void = {}
   ) {
     self.onStart = onStart
     self.onStop = onStop
     self.onCancel = onCancel
     self.onRecordingDiscarded = onRecordingDiscarded
+    self.onInsertLast = onInsertLast
+    self.onOpenHistory = onOpenHistory
+    self.keyProvider = keyProvider
     // Every half of the binding comes from its store, not a hard-coded
     // `.rightCommand` / `.tapOrHold`: `fromPersisted` owns the unset default, and
     // restating it here is the same mistake `BoundTriggerKey` and `HotkeyStepView`
@@ -79,7 +89,7 @@ final class DictationKeyTap {
     // picker, ready screen, and menu bar all named the new one. `refreshBinding()`
     // re-reads this, but nothing enforces that it runs before the first read of
     // either property (`simulatePressForTesting` reads `router.triggerKeyCode`).
-    let key = TriggerKeyStore().triggerKey
+    let key = keyProvider()
     self.router = DictationKeyRouter(
       triggerKeyCode: key.keyCode, activation: TriggerActivationStore().activation)
     self.triggerFlag = Self.flag(for: key)
@@ -181,7 +191,7 @@ final class DictationKeyTap {
   /// match, so the capture must be cancelled, not left to run out the
   /// auto-release cap.
   func refreshBinding() {
-    let key = TriggerKeyStore().triggerKey
+    let key = keyProvider()
     triggerFlag = Self.flag(for: key)
     let activation = TriggerActivationStore().activation
     if router.rebind(triggerKeyCode: key.keyCode, activation: activation) {
@@ -206,6 +216,26 @@ final class DictationKeyTap {
       return
     }
 
+    // When VibeDictate is frontmost, the matching SwiftUI command handles the
+    // shortcut and supplies its menu discoverability. Avoid firing twice from
+    // the listen-only event tap, and ignore keyboard auto-repeat everywhere.
+    if type == .keyDown, !NSApp.isActive,
+      event.getIntegerValueField(.keyboardEventAutorepeat) == 0
+    {
+      let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+      let optionDown = event.flags.contains(.maskAlternate)
+      let commandDown = event.flags.contains(.maskCommand)
+      if GlobalHotkey.insertLast.matches(
+        keyCode: keyCode, optionDown: optionDown, commandDown: commandDown)
+      {
+        onInsertLast()
+      }
+      if GlobalHotkey.openHistory.matches(
+        keyCode: keyCode, optionDown: optionDown, commandDown: commandDown)
+      {
+        onOpenHistory()
+      }
+    }
     guard let routed = routerEvent(type: type, event: event) else { return }
     let now = reference.duration(to: ContinuousClock.now)
     dispatch(router.handle(routed, at: now))

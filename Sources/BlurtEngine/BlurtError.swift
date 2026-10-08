@@ -67,12 +67,12 @@ extension BlurtError {
 extension BlurtError: LocalizedError {
   public var errorDescription: String? {
     switch self {
-    case .accessibilityPermissionMissing: "Accessibility access is required."
-    case .apiKeyMissing: "Add your AssemblyAI API key in Settings to start dictating."
-    case .sttFailed(let underlying): "Transcription failed: \(underlying.localizedDescription)"
-    case .targetAppLost: "Target app lost focus or quit."
-    case .audioCaptureFailed(let underlying): "Audio capture failed: \(underlying.localizedDescription)"
-    case .noEditableTarget: "No text field was focused — copied to the clipboard instead."
+    case .accessibilityPermissionMissing: "Разрешите VibeDictate управлять компьютером."
+    case .apiKeyMissing: "Добавьте ключ API AssemblyAI в настройках для диктовки."
+    case .sttFailed(let underlying): "Ошибка распознавания: \(underlying.localizedDescription)"
+    case .targetAppLost: "Приложение для вставки закрылось или потеряло фокус."
+    case .audioCaptureFailed(let underlying): "Ошибка записи звука: \(underlying.localizedDescription)"
+    case .noEditableTarget: "Не удалось подтвердить поле ввода. Текст скопирован в буфер обмена."
     }
   }
 }

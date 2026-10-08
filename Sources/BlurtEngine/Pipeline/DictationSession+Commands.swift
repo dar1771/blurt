@@ -3,6 +3,7 @@ extension DictationSession {
   /// async methods one-to-one; see each method's doc for semantics.
   public enum Command: Sendable {
     case press
+    case pressFast
     case release
     case cancel
     case cancelRecording
@@ -35,7 +36,12 @@ extension DictationSession {
   /// mirrors, so `submit` and direct calls share every guard and race rule.
   func run(_ command: Command) async {
     switch command {
-    case .press: await press()
+    case .press:
+      if phase.isTerminal { fastModeSelected = false }
+      await press()
+    case .pressFast:
+      if phase.isTerminal { fastModeSelected = true }
+      await press()
     case .release: await release()
     case .cancel: await cancel()
     case .cancelRecording: await cancelRecording()
@@ -102,7 +108,7 @@ extension DictationSession {
     // after mic.stop()) nor the cancelled pipeline can overwrite it back to
     // .idle. Synchronous (no suspension), so it acts immediately rather than
     // queueing behind the pipeline's progress.
-    if phase == .transcribing || phase == .injecting {
+    if phase == .transcribing || phase == .normalizing || phase == .injecting {
       // Cancel but keep the handle so `awaitPipeline()` can join the cancelled task.
       pipelineTask?.cancel()
       // `setPhase(.cancelled)` also abandons the request, which cancelling the
@@ -110,6 +116,7 @@ extension DictationSession {
       // cancellation-aware, so the upload would finish and transcribe a
       // dictation the user dismissed.
       setPhase(.cancelled)
+      await discardVibeRecording()
       return
     }
     // `.connecting` gets the same treatment, for the same reason: it is in-flight
@@ -137,7 +144,7 @@ extension DictationSession {
     // Our turn is the cancel — clear the request whether or not an earlier
     // release already consumed it.
     cancelRequested = false
-    guard phase == .recording else { return }
+    guard phase == .recording || phase == .longMode else { return }
     await stopAndCancel()
   }
 
@@ -154,7 +161,7 @@ extension DictationSession {
   }
 
   private func performCancelRecording() async {
-    guard phase == .recording else { return }
+    guard phase == .recording || phase == .longMode else { return }
     await stopAndCancel()
   }
 }

@@ -1,0 +1,113 @@
+import Foundation
+
+public struct AssemblyAILongTranscriber: LongSTTClient {
+  private let apiKeyProvider: @Sendable () -> String?
+  private let transport: any HTTPTransport
+  private let baseURL: URL
+  private let pollDelay: Duration
+
+  public init(
+    apiKeyProvider: @escaping @Sendable () -> String? = { APIKeyStore.current },
+    transport: any HTTPTransport = URLSession.shared,
+    baseURL: URL = URL(staticString: "https://api.assemblyai.com"),
+    pollDelay: Duration = .seconds(2)
+  ) {
+    self.apiKeyProvider = apiKeyProvider
+    self.transport = transport
+    self.baseURL = baseURL
+    self.pollDelay = pollDelay
+  }
+
+  public func transcribe(audioFileURL: URL, vocabulary _: [String]) async throws -> String {
+    guard let key = apiKeyProvider()?.trimmedNonEmpty() else {
+      throw BlurtError.apiKeyMissing
+    }
+    let audio = WAVUploadGain.adjusted(try Data(contentsOf: audioFileURL, options: .mappedIfSafe))
+    let upload: UploadResponse = try await send(
+      path: "v2/upload", method: "POST", key: key, body: audio,
+      contentType: "application/octet-stream")
+    let submitted: TranscriptResponse = try await sendJSON(
+      path: "v2/transcript", method: "POST", key: key,
+      value: TranscriptRequest(
+        audioURL: upload.uploadURL, speechModels: ["universal-2"],
+        languageCode: "ru"))
+    var current = submitted
+    while current.status == "queued" || current.status == "processing" {
+      try Task.checkCancellation()
+      try await Task.sleep(for: pollDelay)
+      current = try await send(
+        path: "v2/transcript/\(current.id)", method: "GET", key: key,
+        body: nil, contentType: nil)
+    }
+    guard current.status == "completed", let text = current.text?.trimmedNonEmpty() else {
+      throw AssemblyAILongError.transcriptionFailed(current.error)
+    }
+    return text
+  }
+
+  private func sendJSON<T: Encodable, R: Decodable>(
+    path: String, method: String, key: String, value: T
+  ) async throws -> R {
+    try await send(
+      path: path, method: method, key: key,
+      body: JSONEncoder().encode(value), contentType: "application/json")
+  }
+
+  private func send<R: Decodable>(
+    path: String, method: String, key: String, body: Data?, contentType: String?
+  ) async throws -> R {
+    var request = URLRequest(url: baseURL.appending(path: path))
+    request.httpMethod = method
+    // A ten-minute PCM recording is about 19 MB. Give its upload room on a
+    // slow connection; the small submit and poll requests retain the 90 s cap.
+    request.timeoutInterval = path == "v2/upload" ? 600 : 90
+    request.httpBody = body
+    request.setValue(key, forHTTPHeaderField: "Authorization")
+    if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
+    request.setUserAgent()
+    let stage = path == "v2/upload" ? "fallback-upload" : method == "GET" ? "fallback-poll" : "fallback-submit"
+    let (data, response) = try await transport.measuredData(for: request, stage: stage)
+    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+      let detail = try? JSONDecoder().decode(APIErrorResponse.self, from: data).error
+      throw AssemblyAILongError.httpStatus(http.statusCode, detail)
+    }
+    return try JSONDecoder().decode(R.self, from: data)
+  }
+
+  struct TranscriptRequest: Encodable, Equatable {
+    let audioURL: String
+    let speechModels: [String]
+    let languageCode: String
+    enum CodingKeys: String, CodingKey {
+      case audioURL = "audio_url"
+      case speechModels = "speech_models"
+      case languageCode = "language_code"
+    }
+  }
+  struct UploadResponse: Decodable {
+    let uploadURL: String
+    enum CodingKeys: String, CodingKey { case uploadURL = "upload_url" }
+  }
+  struct TranscriptResponse: Decodable {
+    let id: String
+    let status: String
+    let text: String?
+    let error: String?
+  }
+  struct APIErrorResponse: Decodable { let error: String? }
+}
+
+enum AssemblyAILongError: Error, LocalizedError, Sendable, Equatable {
+  case httpStatus(Int, String?)
+  case transcriptionFailed(String?)
+
+  var errorDescription: String? {
+    switch self {
+    case .httpStatus(let status, let detail):
+      detail.map { "Ошибка AssemblyAI: код \(status). \($0)" }
+        ?? "Ошибка AssemblyAI: код \(status)."
+    case .transcriptionFailed(let message):
+      message.map { "Не удалось распознать запись: \($0)" } ?? "Не удалось распознать запись."
+    }
+  }
+}

@@ -31,8 +31,8 @@ struct BlurtApp: App {
   /// someone forgot a compilation condition. `HostIdentity.blurt.subsystem` is
   /// the shipping id — the one place that string is written down.
   init() {
-    let isShippingBuild = Bundle.main.bundleIdentifier == HostIdentity.blurt.subsystem
-    HostIdentity.configure(isShippingBuild ? .blurt : .blurtDev)
+    let isShippingBuild = Bundle.main.bundleIdentifier == HostIdentity.vibeDictate.subsystem
+    HostIdentity.configure(isShippingBuild ? .vibeDictate : .vibeDictateDev)
   }
 
   var body: some Scene {
@@ -50,19 +50,20 @@ struct BlurtApp: App {
     // configured launch (the "ready" screen) come up front, rather than the app
     // launching silently to just the overlay pill. (`AppDelegate` activates the
     // app so it's frontmost; the Dock/⌘, reopen it once closed.)
-    .defaultLaunchBehavior(.presented)
     .commands {
       BlurtCommands(appDelegate: appDelegate)
     }
 
-    // Settings scene: change the API key or dictation shortcut. SwiftUI wires
-    // the standard ⌘, "Settings…" menu item to this scene automatically; it's
-    // opened on demand (⌘, / the ready screen's link / the menu bar item, via
-    // `openSettings`), never at launch. Keeps standard window chrome.
-    Settings {
+    // Settings window: the app menu, ready screen, and menu-bar item all open
+    // this same scene through `AppDelegate.openSettings`.
+    Window(UITestIdentifiers.settingsWindowTitle, id: SettingsWindow.id) {
       SettingsWindowRoot(appDelegate: appDelegate)
     }
     .windowResizability(.contentSize)
+
+    Window("История", id: HistoryWindow.id) {
+      HistoryWindowRoot(model: appDelegate.historyModel)
+    }
 
     // Menu bar status item: a live dictation indicator (idle / recording /
     // transcribing) plus a discoverability menu for the otherwise-invisible
@@ -88,13 +89,12 @@ struct BlurtApp: App {
         }
       }
       .windowResizability(.contentSize)
-      .defaultLaunchBehavior(UITestMode.isActive ? .presented : .suppressed)
-      // Pin the harness to the top-leading corner so it never overlaps the
-      // centered main window: the two stay simultaneously interactable, so a test
-      // can drive a dictation on the harness and read the result on the ready
-      // screen without closing/reopening either (XCUITest can't click a control
-      // under another window). Test-only (UITEST_HOOKS).
       .defaultPosition(.topLeading)
+    // Pin the harness to the top-leading corner so it never overlaps the
+    // centered main window: the two stay simultaneously interactable, so a test
+    // can drive a dictation on the harness and read the result on the ready
+    // screen without closing/reopening either (XCUITest can't click a control
+    // under another window). Test-only (UITEST_HOOKS).
     #endif
   }
 }

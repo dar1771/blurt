@@ -1,5 +1,4 @@
 import Foundation
-import Synchronization
 
 @testable import BlurtEngine
 
@@ -27,6 +26,7 @@ func makeSession(
   frontmost: CapturedFocus? = nil,
   keyTerms: [String] = [],
   textShortcuts: [TextShortcut] = [],
+  focusContextProvider: (@Sendable () -> TranscriptionContext?)? = nil,
   onTranscriptDelivered: (@Sendable (String, RecentDictations) -> Void)? = nil
 ) -> SessionFixture {
   let mic = StubMicCapture()
@@ -40,6 +40,7 @@ func makeSession(
     // developer's own Settings list can't change what a test sends.
     keyTermsProvider: { keyTerms },
     textShortcutsProvider: { textShortcuts },
+    focusContextProvider: focusContextProvider,
     onTranscriptDelivered: onTranscriptDelivered,
     seams: testSeams(field: field, frontmost: frontmost, log: log))
   return SessionFixture(

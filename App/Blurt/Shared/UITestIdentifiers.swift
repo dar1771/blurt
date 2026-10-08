@@ -21,22 +21,21 @@ enum UITestIdentifiers {
 
   // Window titles the XCUITest suite queries, sourced from the `Window(_:id:)`
   // declarations in `App.swift`.
-  static let mainWindowTitle = "Blurt"
+  static let mainWindowTitle = "VibeDictate"
   static let harnessWindowTitle = "Blurt UI Test Harness"
   /// The harness `Window`'s scene id.
   static let harnessWindowID = "uitest.harness"
 
-  // The Settings panes' tab labels (`SettingsWindowRoot` renders them; the
-  // XCUITest suite clicks them). macOS also titles a preferences window after
-  // its selected pane, so the General label doubles as the Settings window's
-  // opening title (see `settingsWindowTitle` in BlurtUITestSupport).
-  static let generalSettingsTab = "General"
-  static let advancedSettingsTab = "Advanced"
-  static let textShortcutsTab = "Text Shortcuts"
+  // The Settings window title and pane labels used by the app and UI tests.
+  static let generalSettingsTab = "Основные"
+  static let settingsWindowTitle = "Настройки"
+  static let advancedSettingsTab = "Дополнительно"
+  static let textShortcutsTab = "Замены текста"
 
   // Test-harness controls (set in `UITestSupport.swift`).
   static let transcriptField = "uitest.transcript"
   static let setKeyButton = "uitest.setKey"
+  static let openSettingsButton = "uitest.openSettings"
   static let startButton = "uitest.start"
   static let stopButton = "uitest.stop"
   static let cancelButton = "uitest.cancel"
@@ -67,6 +66,10 @@ enum UITestIdentifiers {
   static let soundPicker = "settings.sound.picker"
   static let developerToggle = "settings.developer.toggle"
   static let enhancedTranscriptsToggle = "settings.enhancedTranscripts.toggle"
+  static let clipboardSettingsTab = "Буфер"
+  static let clipboardSyncToggle = "settings.clipboard.toggle"
+  static let clipboardSyncStatus = "settings.clipboard.status"
+  static let clipboardCreateGroup = "settings.clipboard.createGroup"
   static let updateCheck = "settings.update.check"
   /// The Advanced pane's "Reset…" button (`SettingsWindowRoot`'s reset section).
   /// Only the row button is identified: the confirmation it opens is an alert,
@@ -121,6 +124,6 @@ enum UITestIdentifiers {
   // Sentinel API keys the offline UI-test validation recognizes
   // (`UITestKeyValidation`); the suite types these to drive the settings paths.
   static let validAPIKey = "uitest-valid-key"
-  static let invalidAPIKey = "uitest-invalid-key"
+  static let invalidAPIKey = "x"
   static let unreachableAPIKey = "uitest-unreachable-key"
 }

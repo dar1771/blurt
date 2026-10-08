@@ -14,7 +14,9 @@ struct MenuBarStatusTests {
   /// since its mapping encodes a deliberate policy rather than a coarser icon.
   static let projections: [(phase: PipelinePhase, expected: MenuBarStatus)] = [
     (.recording, .recording),
+    (.longMode, .recording),
     (.transcribing, .transcribing),
+    (.normalizing, .transcribing),
     (.idle, .idle),
     // The mic is still opening, so the coarse indicator rests at idle rather
     // than claiming "recording" — the one thing `.connecting` exists to prevent.
@@ -52,15 +54,15 @@ struct MenuBarStatusPresentationTests {
   @Test func symbolNames() {
     // A stylized "B" at rest, filling in while recording — the same idle→fill
     // idiom the mic glyphs used — and the waveform while transcribing.
-    #expect(MenuBarStatus.idle.symbolName == "b.circle")
-    #expect(MenuBarStatus.recording.symbolName == "b.circle.fill")
+    #expect(MenuBarStatus.idle.symbolName == "v.circle")
+    #expect(MenuBarStatus.recording.symbolName == "v.circle.fill")
     #expect(MenuBarStatus.transcribing.symbolName == "waveform")
   }
 
   @Test func accessibilityLabels() {
-    #expect(MenuBarStatus.idle.accessibilityLabel == "Blurt — idle")
-    #expect(MenuBarStatus.recording.accessibilityLabel == "Blurt — recording")
-    #expect(MenuBarStatus.transcribing.accessibilityLabel == "Blurt — transcribing")
+    #expect(MenuBarStatus.idle.accessibilityLabel == "VibeDictate — ожидание")
+    #expect(MenuBarStatus.recording.accessibilityLabel == "VibeDictate — запись")
+    #expect(MenuBarStatus.transcribing.accessibilityLabel == "VibeDictate — распознавание")
   }
 }
 
@@ -75,8 +77,10 @@ struct PipelinePhaseIsCapturingTests {
   func capturingCoversBringUpAndRecording() {
     #expect(PipelinePhase.connecting.isCapturing)
     #expect(PipelinePhase.recording.isCapturing)
+    #expect(PipelinePhase.longMode.isCapturing)
     #expect(!PipelinePhase.idle.isCapturing)
     #expect(!PipelinePhase.transcribing.isCapturing)
+    #expect(!PipelinePhase.normalizing.isCapturing)
     #expect(!PipelinePhase.injecting.isCapturing)
     #expect(!PipelinePhase.cancelled.isCapturing)
     #expect(!PipelinePhase.pasted.isCapturing)

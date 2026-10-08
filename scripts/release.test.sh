@@ -166,28 +166,56 @@ check "main == tag -> next patch" "0.1.6" "$(default_target 0.1.5 0.1.5)"
 # no tags yet -> start the next patch from main.
 check "no tags -> next patch" "0.1.6" "$(default_target 0.1.5 '')"
 
+echo "== release_origin_matches =="
+checktrue "accepts fork HTTPS" release_origin_matches https://github.com/dar1771/blurt.git
+checktrue "accepts fork SSH" release_origin_matches git@github.com:dar1771/blurt.git
+checkfalse "rejects upstream" release_origin_matches https://github.com/AssemblyAI/blurt.git
+checkfalse "rejects lookalike" release_origin_matches https://github.com/dar1771/blurt-other.git
+
+echo "== require_signing_config =="
+# Fixture pins are synthetic; no Keychain access or actual signing.
+# shellcheck disable=SC2329  # invoked indirectly by checktrue
+valid_pins() {
+  VIBEDICTATE_SIGNING_IDENTITY=1111111111111111111111111111111111111111 \
+    VIBEDICTATE_SIGNING_SHA256=2222222222222222222222222222222222222222222222222222222222222222 \
+    VIBEDICTATE_SIGNING_TEAM_ID=TESTTEAM01 require_signing_config
+}
+checktrue "accepts explicit pins" valid_pins
+# shellcheck disable=SC2016  # $1 expands in the child bash, not this shell
+checkdie "missing identity fails closed" "VIBEDICTATE_SIGNING_IDENTITY" \
+  env -u VIBEDICTATE_SIGNING_IDENTITY bash -c 'source "$1"; require_signing_config' _ "$DIR/release-lib.sh"
+# shellcheck disable=SC2016  # $1 expands in the child bash, not this shell
+checkdie "malformed digest fails closed" "VIBEDICTATE_SIGNING_SHA256" \
+  env VIBEDICTATE_SIGNING_IDENTITY=1111111111111111111111111111111111111111 \
+  VIBEDICTATE_SIGNING_SHA256=invalid bash -c 'source "$1"; require_signing_config' _ "$DIR/release-lib.sh"
+# shellcheck disable=SC2016  # $1 expands in the child bash, not this shell
+checkdie "missing team fails closed" "VIBEDICTATE_SIGNING_TEAM_ID" \
+  env VIBEDICTATE_SIGNING_IDENTITY=1111111111111111111111111111111111111111 \
+  VIBEDICTATE_SIGNING_SHA256=2222222222222222222222222222222222222222222222222222222222222222 \
+  VIBEDICTATE_SIGNING_TEAM_ID= bash -c 'source "$1"; require_signing_config' _ "$DIR/release-lib.sh"
+
 echo "== identity_listed =="
-printf '  1) 602F699488189767137DF15633B967B1371ACD86 "Developer ID Application: Alex Kroman (B2VQF7Q2QY)"\n' \
-  | identity_listed 602F699488189767137DF15633B967B1371ACD86
+printf '  1) 1111111111111111111111111111111111111111 "Developer ID Application: Test Signer (TESTTEAM01)"\n' \
+  | identity_listed 1111111111111111111111111111111111111111
 check "present -> rc 0" "0" "$?"
 printf '  1) 0000000000000000000000000000000000000000 "Some Other Identity"\n' \
-  | identity_listed 602F699488189767137DF15633B967B1371ACD86
+  | identity_listed 1111111111111111111111111111111111111111
 check "absent -> rc 1" "1" "$?"
 
 echo "== sha_from_sums =="
 check "finds hash by name" "abc123" \
-  "$(printf 'abc123  Blurt-0.1.5.dmg\ndef456  Blurt-0.1.5.app.dSYM.zip\n' | sha_from_sums Blurt-0.1.5.dmg)"
+  "$(printf 'abc123  VibeDictate-0.1.5.dmg\ndef456  VibeDictate-0.1.5.app.dSYM.zip\n' | sha_from_sums VibeDictate-0.1.5.dmg)"
 check "handles binary-mode star" "abc123" \
-  "$(printf 'abc123 *Blurt-0.1.5.dmg\n' | sha_from_sums Blurt-0.1.5.dmg)"
+  "$(printf 'abc123 *VibeDictate-0.1.5.dmg\n' | sha_from_sums VibeDictate-0.1.5.dmg)"
 check "missing name -> empty" "" \
-  "$(printf 'abc123  Blurt-0.1.5.dmg\n' | sha_from_sums nope.dmg)"
+  "$(printf 'abc123  VibeDictate-0.1.5.dmg\n' | sha_from_sums nope.dmg)"
 # The shape release-publish.sh actually reads: the one notarized image is listed
 # under both its archival and its stable name, and the requested one is not the
 # first row. Selecting by position rather than by name would verify the published
-# Blurt.dmg against the other entry's digest — a mismatch that reads as "the
+# VibeDictate.dmg against the other entry's digest — a mismatch that reads as "the
 # upload is corrupt" on a perfectly good release.
 check "selects by name when both published names are listed" "stable" \
-  "$(printf 'archival  Blurt-0.1.5.dmg\nstable  Blurt.dmg\n' | sha_from_sums Blurt.dmg)"
+  "$(printf 'archival  VibeDictate-0.1.5.dmg\nstable  VibeDictate.dmg\n' | sha_from_sums VibeDictate.dmg)"
 
 echo "== require_tools =="
 checkrc 0 "tools on PATH pass" require_tools sh awk

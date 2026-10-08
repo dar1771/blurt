@@ -47,17 +47,29 @@ protocol ClipboardAccess: Sendable {
   /// in the meantime (so a user copy during the paste-settle window survives).
   /// Call the returned action once the paste has settled.
   func writeAndPrepareRestore(_ text: String) -> @Sendable () -> Void
+  func writeAndPrepareRestore(_ text: String, recordID: UUID) -> @Sendable () -> Void
+}
+
+extension ClipboardAccess {
+  func writeAndPrepareRestore(_ text: String, recordID: UUID) -> @Sendable () -> Void {
+    writeAndPrepareRestore(text)
+  }
 }
 
 /// `ClipboardAccess` backed by the real `NSPasteboard.general`. The change-count
 /// comparison that gates the deferred restore lives here, behind the seam, so a
 /// fake never re-implements it.
 struct SystemClipboard: ClipboardAccess {
+  static let dictationRecordType = NSPasteboard.PasteboardType(
+    "com.vibedictate.dictation-record-id")
+
   func write(_ text: String) { setString(text) }
 
   func writeAndPrepareRestore(_ text: String) -> @Sendable () -> Void {
     let saved = snapshot()
     setString(text)
+    // Clipboard observers must never forward the temporary text used for ⌘V.
+    NSPasteboard.general.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
     // Snapshot the change count our own write produced. If anything else writes
     // to the pasteboard before the restore fires (e.g. the user copies
     // something), the count moves and the restore leaves their newer contents
@@ -69,6 +81,24 @@ struct SystemClipboard: ClipboardAccess {
       // nothing to put back, so leave the transcript on the clipboard (the same
       // degraded-but-recoverable outcome as the `.noTarget` path) rather than
       // clearing the user's clipboard to nothing.
+      guard let saved else { return }
+      restore(saved)
+    }
+  }
+
+  func writeAndPrepareRestore(_ text: String, recordID: UUID) -> @Sendable () -> Void {
+    let saved = snapshot()
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    pasteboard.setString(text, forType: .string)
+    pasteboard.setString(recordID.uuidString, forType: Self.dictationRecordType)
+    pasteboard.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.TransientType"))
+    let ourChangeCount = pasteboard.changeCount
+    return { [self] in
+      let current = NSPasteboard.general
+      guard current.changeCount == ourChangeCount,
+        current.string(forType: Self.dictationRecordType) == recordID.uuidString
+      else { return }
       guard let saved else { return }
       restore(saved)
     }
