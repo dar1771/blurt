@@ -16,7 +16,9 @@ final class SettingsUITests: BlurtUITestCase {
     let status = clipboard.staticTexts[UITestIdentifiers.clipboardSyncStatus]
     XCTAssertTrue(status.exists)
     waitForLabel(status, equals: "Выключено")
-    clipboard.buttons[UITestIdentifiers.clipboardCreateGroup].click()
+    let createGroup = clipboard.buttons[UITestIdentifiers.clipboardCreateGroup]
+    scrollToSetting(createGroup, in: clipboard)
+    createGroup.click()
     XCTAssertFalse(toggle.isEnabled, "UI-test mode must never generate a real pairing secret")
   }
 
@@ -85,6 +87,7 @@ final class SettingsUITests: BlurtUITestCase {
     let settings = openSettingsWindow()
 
     let picker = settings.popUpButtons[UITestIdentifiers.hotkeyPicker]
+    scrollToSetting(picker, in: settings)
     XCTAssertTrue(picker.waitForExistence(timeout: 10), "Hotkey picker not found")
     // Default is right ⌘; switch to right ⌥ and confirm the selection sticks.
     picker.click()
@@ -102,6 +105,7 @@ final class SettingsUITests: BlurtUITestCase {
     let settings = openSettingsWindow()
 
     let picker = settings.popUpButtons[UITestIdentifiers.micPicker]
+    scrollToSetting(picker, in: settings)
     XCTAssertTrue(picker.waitForExistence(timeout: 10), "Microphone picker not found")
     let value = picker.value as? String ?? ""
     XCTAssertTrue(
@@ -115,6 +119,7 @@ final class SettingsUITests: BlurtUITestCase {
     let settings = openSettingsWindow()
 
     let picker = settings.popUpButtons[UITestIdentifiers.soundPicker]
+    scrollToSetting(picker, in: settings)
     XCTAssertTrue(picker.waitForExistence(timeout: 10), "Sound picker not found")
     picker.click()
     app.menuItems["Без звука"].click()
@@ -150,6 +155,7 @@ final class SettingsUITests: BlurtUITestCase {
     let advanced = selectSettingsTab(settings, named: UITestIdentifiers.advancedSettingsTab)
 
     let button = advanced.anyDescendant(identified: UITestIdentifiers.updateCheck)
+    scrollToSetting(button, in: advanced)
     XCTAssertTrue(button.waitForExistence(timeout: 10), "Check for Updates button not found")
     button.click()
 
@@ -268,6 +274,7 @@ final class SettingsUITests: BlurtUITestCase {
     via identifier: String = UITestIdentifiers.apiKeyConnect
   ) -> XCUIElement {
     let button = settings.buttons[identifier]
+    scrollToSetting(button, in: settings)
     XCTAssertTrue(button.waitForExistence(timeout: 10), "API key row button (\(identifier)) not found")
     button.click()
     let sheet = settings.sheets.firstMatch
