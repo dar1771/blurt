@@ -1,11 +1,12 @@
 import Foundation
 
-/// Transcribes the saved WAV directly; no text-normalization request is made.
+/// Sends a compressed transport copy; the original WAV stays available in history.
 public struct OpenRouterTranscriber: LongSTTClient {
   public static let defaultModel = "microsoft/mai-transcribe-2"
 
   private let apiKeyProvider: @Sendable () -> String?
   private let modelProvider: @Sendable () -> String
+  private let compressionEnabledProvider: @Sendable () -> Bool
   private let transport: any HTTPTransport
   private let endpoint: URL
   private let sleep: @Sendable (TimeInterval) async throws -> Void
@@ -13,6 +14,9 @@ public struct OpenRouterTranscriber: LongSTTClient {
   public init(
     apiKeyProvider: @escaping @Sendable () -> String? = { OpenRouterAPIKeyStore.current },
     modelProvider: @escaping @Sendable () -> String = { FastTranscriptionModelStore().modelID },
+    compressionEnabledProvider: @escaping @Sendable () -> Bool = {
+      AudioUploadCompressionStore().isEnabled
+    },
     transport: any HTTPTransport = URLSession.shared,
     endpoint: URL = URL(staticString: "https://openrouter.ai/api/v1/audio/transcriptions"),
     sleep: @escaping @Sendable (TimeInterval) async throws -> Void = {
@@ -21,6 +25,7 @@ public struct OpenRouterTranscriber: LongSTTClient {
   ) {
     self.apiKeyProvider = apiKeyProvider
     self.modelProvider = modelProvider
+    self.compressionEnabledProvider = compressionEnabledProvider
     self.transport = transport
     self.endpoint = endpoint
     self.sleep = sleep
@@ -32,7 +37,24 @@ public struct OpenRouterTranscriber: LongSTTClient {
     }
     let model = modelProvider()
     let preparationStart = ContinuousClock.now
-    let audio = try Data(contentsOf: audioFileURL, options: .mappedIfSafe)
+    let audio = try CompressedAudioUpload.prepare(
+      audioFileURL, compressed: compressionEnabledProvider() && model == Self.defaultModel)
+    let request = try makeRequest(audio: audio, model: model, key: key, vocabulary: vocabulary)
+    RequestLatency.stage("stt-prepare", since: preparationStart, bytes: request.httpBody?.count ?? 0)
+    do {
+      return try await send(request)
+    } catch OpenRouterTranscriptionError.httpStatus(let status)
+      where audio.format != "wav" && (status == 400 || status == 415)
+    {
+      try Task.checkCancellation()
+      let original = try CompressedAudioUpload.prepare(audioFileURL, compressed: false)
+      return try await send(makeRequest(audio: original, model: model, key: key, vocabulary: vocabulary))
+    }
+  }
+
+  private func makeRequest(
+    audio: CompressedAudioUpload, model: String, key: String, vocabulary: [String]
+  ) throws -> URLRequest {
     var request = URLRequest(url: endpoint)
     request.httpMethod = "POST"
     request.timeoutInterval = 120
@@ -42,7 +64,7 @@ public struct OpenRouterTranscriber: LongSTTClient {
     request.httpBody = try JSONEncoder().encode(
       Request(
         model: model,
-        inputAudio: InputAudio(data: audio.base64EncodedString(), format: "wav"),
+        inputAudio: InputAudio(data: audio.data.base64EncodedString(), format: audio.format),
         language: "ru",
         provider: model == Self.defaultModel
           ? Provider(
@@ -50,8 +72,7 @@ public struct OpenRouterTranscriber: LongSTTClient {
               azure: AzureOptions(
                 enhancedMode: EnhancedMode(modelOptions: ModelOptions(transcribeStyle: "clean")),
                 phraseList: PhraseList(phrases: vocabulary)))) : nil))
-    RequestLatency.stage("stt-prepare", since: preparationStart, bytes: request.httpBody?.count ?? 0)
-    return try await send(request)
+    return request
   }
 
   private func send(_ request: URLRequest) async throws -> String {

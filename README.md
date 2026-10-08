@@ -25,6 +25,10 @@ The image contains `VibeDictate.app`; drag it to `Applications`.
   then normalization.
 - Tap to start/stop, or hold for push-to-talk. Settings let you change the keys
   and the OpenRouter models. These modes can return identical text on simple phrases.
+- MAI uploads use a smaller AAC/M4A copy by default; the original WAV remains in
+  history. Disable «Ускорить отправку аудио» in Settings to upload WAV if compression
+  affects recognition. Conversion failure or an unsupported-format response falls
+  back to WAV. Normalization requests prefer providers with lower latency.
 - The overlay shows microphone level and processing state. Text is pasted using
   ⌘V; the previous clipboard is restored after a successful paste. If the target
   is lost, the transcript remains available for copying.

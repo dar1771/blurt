@@ -44,6 +44,7 @@ struct PersistedSettingsTests {
     #expect(PersistedSettings.allDefaultsKeys.contains(VocabularyStore.defaultsKey))
     #expect(PersistedSettings.allDefaultsKeys.contains(OpenRouterModelStore.defaultsKey))
     #expect(PersistedSettings.allDefaultsKeys.contains(FastTranscriptionModelStore.defaultsKey))
+    #expect(PersistedSettings.allDefaultsKeys.contains(AudioUploadCompressionStore.defaultsKey))
     #expect(PersistedSettings.allDefaultsKeys.contains(ClipboardSyncSettingsStore.enabledKey))
     #expect(PersistedSettings.allDefaultsKeys.contains(ClipboardSyncSettingsStore.deviceKey))
   }
@@ -53,7 +54,7 @@ struct PersistedSettingsTests {
     // Exactly the eleven known stores' keys (OverlayOriginStore contributes two,
     // StyleProfileStore three): a removed store must leave the roster in the same
     // change, and a key listed twice would hint at a copy-paste slip.
-    #expect(PersistedSettings.allDefaultsKeys.count == 19)
+    #expect(PersistedSettings.allDefaultsKeys.count == 20)
     #expect(Set(PersistedSettings.allDefaultsKeys).count == PersistedSettings.allDefaultsKeys.count)
   }
 
@@ -83,13 +84,14 @@ struct PersistedSettingsTests {
       VocabularyStore.defaultsKey,
       OpenRouterModelStore.defaultsKey,
       FastTranscriptionModelStore.defaultsKey,
+      AudioUploadCompressionStore.defaultsKey,
       ClipboardSyncSettingsStore.enabledKey,
       ClipboardSyncSettingsStore.deviceKey,
     ]
     #expect(storeKeys == Set(DefaultsKey.allCases.map(\.key)))
     // No two stores sharing a slot — the Set above would have quietly absorbed a
     // collision, and two stores on one key means each overwrites the other.
-    #expect(storeKeys.count == 19)
+    #expect(storeKeys.count == 20)
   }
 
   @Test("resetAll clears every roster key and leaves unrelated ones alone")

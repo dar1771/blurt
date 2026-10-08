@@ -44,6 +44,7 @@ struct OpenRouterTextNormalizerTests {
     let decoded = try JSONDecoder().decode(OpenRouterTextNormalizer.Request.self, from: body)
     #expect(decoded.model == "test/model")
     #expect(decoded.temperature == 0)
+    #expect(decoded.provider.sort == "latency")
     #expect(decoded.messages.last?.content.contains("Swift, OpenAI") == true)
     #expect(decoded.messages.last?.content.contains("напиши на Swift") == true)
     #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret")

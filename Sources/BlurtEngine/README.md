@@ -330,10 +330,19 @@ Two ways out, neither taken yet: drop it from the public product (its own target
 ## VibeDictate latency diagnostics
 
 OpenRouter normalization defaults to `openai/gpt-4.1-mini`. Explicit model preferences are preserved;
-an explicitly selected Google model still falls back to mini after HTTP 403.
+an explicitly selected Google model still falls back to mini after HTTP 403. Chat requests use
+`provider.sort = "latency"`; this preference does not change their model or fidelity guard.
+
+`OpenRouterTranscriber` creates an AAC/M4A transport copy at 48 kbps for the default MAI model.
+It uses native AVFoundation, closes the writer before reading the container, and leaves the original
+WAV untouched. Other models keep WAV. The compression setting defaults to on and is included in
+settings reset. An unavailable encoder or a copy larger than WAV uses the original bytes; HTTP
+400/415 on compressed audio triggers one WAV fallback. Authentication errors do not trigger that
+fallback, and cancellation stops conversion and upload. AAC is lossy: the Settings toggle lets users
+return to original WAV uploads. Existing history retries use the original WAV with Universal-2.
 
 The `PipelineLatency` unified-log category records microphone start/stop, WAV finalization, request
-preparation, insertion and the post-stop pipeline. Per-request identifiers join totals and URLSession
+preparation, AAC encoding, insertion and the post-stop pipeline. Per-request identifiers join totals and URLSession
 transaction metrics: DNS, connection, TLS, upload, wait after upload, download, proxy/connection reuse,
 HTTP status and STT retry attempts/delays. Job identifiers join stages from one dictation. No audio,
 transcripts, vocabulary, request headers, keys or file paths are included.

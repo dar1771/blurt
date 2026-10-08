@@ -124,6 +124,10 @@ public struct OpenRouterTextNormalizer: TextNormalizer {
     let model: String
     let temperature: Double
     let messages: [Message]
+    var provider = Provider(sort: "latency")
+  }
+  struct Provider: Codable, Equatable {
+    let sort: String
   }
   struct Response: Decodable {
     struct Choice: Decodable {

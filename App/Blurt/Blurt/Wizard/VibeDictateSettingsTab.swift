@@ -10,6 +10,8 @@ struct VibeDictateSettingsTab: View {
   private var modelID = OpenRouterTextNormalizer.defaultModel
   @AppStorage(FastTranscriptionModelStore.defaultsKey)
   private var fastModelID = OpenRouterTranscriber.defaultModel
+  @AppStorage(AudioUploadCompressionStore.defaultsKey)
+  private var compressedAudio = AudioUploadCompressionStore.defaultValue
   @AppStorage(TriggerKeyStore.defaultsKey)
   private var fastKeyCode = 0
 
@@ -28,6 +30,12 @@ struct VibeDictateSettingsTab: View {
             + "\(qualityKey.fullName): MAI для записей до 115 секунд, "
             + "Universal-2 для длинных; затем нормализация. "
             + "Клавиши можно поменять местами в разделе «Горячая клавиша»."
+        )
+        .font(.caption).foregroundStyle(.secondary)
+        Toggle("Ускорить отправку аудио", isOn: $compressedAudio)
+        Text(
+          "Для MAI отправляется сжатая копия AAC. Исходный WAV сохраняется в истории. "
+            + "Если заметите ошибки распознавания, отключите сжатие."
         )
         .font(.caption).foregroundStyle(.secondary)
         TextField("Модель нормализации", text: $modelID)
