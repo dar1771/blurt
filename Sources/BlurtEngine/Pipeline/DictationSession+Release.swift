@@ -11,6 +11,8 @@ extension DictationSession {
     setPhase(.transcribing)
     let recordedBytes: Int
     do {
+      let start = ContinuousClock.now
+      defer { RequestLatency.stage("mic-stop", since: start, job: currentJob?.id) }
       recordedBytes = try await mic.stop()
     } catch {
       if cancelWonRelease() { return }

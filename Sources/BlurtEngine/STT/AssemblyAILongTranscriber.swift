@@ -65,7 +65,8 @@ public struct AssemblyAILongTranscriber: LongSTTClient {
     request.setValue(key, forHTTPHeaderField: "Authorization")
     if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
     request.setUserAgent()
-    let (data, response) = try await transport.data(for: request)
+    let stage = path == "v2/upload" ? "fallback-upload" : method == "GET" ? "fallback-poll" : "fallback-submit"
+    let (data, response) = try await transport.measuredData(for: request, stage: stage)
     if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
       let detail = try? JSONDecoder().decode(APIErrorResponse.self, from: data).error
       throw AssemblyAILongError.httpStatus(http.statusCode, detail)

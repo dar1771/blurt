@@ -5,6 +5,23 @@ import Testing
 
 @Suite("OpenRouterTextNormalizer wire format")
 struct OpenRouterTextNormalizerTests {
+  @Test("Unset model selects GPT-4.1 mini directly in one request")
+  func defaultUsesMiniDirectly() async throws {
+    let models = ValueBox([String]())
+    let model = OpenRouterModelStore(defaults: freshDefaults()).modelID
+    let normalizer = OpenRouterTextNormalizer(
+      apiKeyProvider: { "key" }, modelProvider: { model },
+      transport: FakeHTTPTransport { request in
+        let payload = try? JSONDecoder().decode(
+          OpenRouterTextNormalizer.Request.self, from: request.httpBody ?? Data())
+        models.value.append(payload?.model ?? "invalid-payload")
+        return (200, Data(#"{"choices":[{"message":{"role":"assistant","content":"Готово."}}]}"#.utf8))
+      })
+    let result = try await normalizer.normalizeWithMetadata(rawTranscript: "готово", vocabulary: [])
+    #expect(models.value == ["openai/gpt-4.1-mini"])
+    #expect(result.model == "openai/gpt-4.1-mini")
+  }
+
   @Test("encodes model, deterministic temperature, vocabulary and Russian transcript")
   func requestEncoding() async throws {
     let response = """

@@ -144,7 +144,9 @@ public final class STTRoutingSession: Sendable {
 
   public func stop(durationSeconds: TimeInterval, audioFileURL: URL) async throws -> RoutedTranscription {
     cutoverTask.cancel()
+    let preparationStart = ContinuousClock.now
     try await audioCompletion.value
+    RequestLatency.stage("audio-finalize-wait", since: preparationStart)
     if preferAccurateRussian || cutoverState.wasReached
       || durationSeconds >= STTRouter.shortModeCutoverSeconds
     {

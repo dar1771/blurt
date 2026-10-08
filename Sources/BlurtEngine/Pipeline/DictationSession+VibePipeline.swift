@@ -17,16 +17,18 @@ extension DictationSession {
       let press = pressContext
       let clock = clock
       let jobID = job.id
-      routingSession = pipeline.router.start(
-        frames: frames, writer: writer,
-        contextProvider: {
-          let resolved = await press?.wait(within: Self.contextWaitBudget, clock: clock)
-          return resolved ?? press?.pressKnown
-        },
-        vocabulary: keyTermsProvider(),
-        onCutover: { [weak self] in
-          Task { await self?.enterLongMode(jobID: jobID) }
-        })
+      routingSession = RequestLatency.$jobID.withValue(job.id) {
+        pipeline.router.start(
+          frames: frames, writer: writer,
+          contextProvider: {
+            let resolved = await press?.wait(within: Self.contextWaitBudget, clock: clock)
+            return resolved ?? press?.pressKnown
+          },
+          vocabulary: keyTermsProvider(),
+          onCutover: { [weak self] in
+            Task { await self?.enterLongMode(jobID: jobID) }
+          })
+      }
     } catch {
       try? await mic.cancelCapture()
       await failVibeRecord(error)
@@ -62,13 +64,17 @@ extension DictationSession {
       record.durationMs = Int64(recordedByteCount) * 1_000 / bytesPerSecond
       record.targetAppName = capturedContext?.appName ?? record.targetAppName
       record.targetWindowTitle = capturedContext?.windowTitle
-      let routed = try await route.stop(
-        durationSeconds: Double(record.durationMs) / 1_000,
-        audioFileURL: await writer.fileURL)
-      if Task.isCancelled { return }
-      await normalizeAndDeliverVibe(
-        record: completedRecord(record, routed: routed), routed: routed,
-        job: job, pipeline: pipeline)
+      try await RequestLatency.$jobID.withValue(job.id) {
+        let start = ContinuousClock.now
+        defer { RequestLatency.stage("post-stop-pipeline", since: start) }
+        let routed = try await route.stop(
+          durationSeconds: Double(record.durationMs) / 1_000,
+          audioFileURL: await writer.fileURL)
+        if Task.isCancelled { return }
+        await normalizeAndDeliverVibe(
+          record: completedRecord(record, routed: routed), routed: routed,
+          job: job, pipeline: pipeline)
+      }
     } catch {
       if Task.isCancelled || error is CancellationError { return }
       currentRecord = record
@@ -170,6 +176,8 @@ extension DictationSession {
   }
 
   private func injectVibe(_ text: String, job: DictationJob, record: inout DictationRecord) async {
+    let start = ContinuousClock.now
+    defer { RequestLatency.stage("insertion", since: start) }
     setPhase(.injecting)
     do {
       try await injector.insert(

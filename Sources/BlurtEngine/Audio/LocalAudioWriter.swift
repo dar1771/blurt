@@ -98,7 +98,11 @@ struct PCMFrameFanout: Sendable {
           try await writer.append(frame)
           shortFeed.yield(frame)
         }
-        try await writer.finish()
+        do {
+          let start = ContinuousClock.now
+          defer { RequestLatency.stage("audio-finalize", since: start) }
+          try await writer.finish()
+        }
         shortFeed.finish()
       } catch {
         shortFeed.finish()

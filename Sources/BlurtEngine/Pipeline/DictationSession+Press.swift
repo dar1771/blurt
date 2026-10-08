@@ -1,4 +1,5 @@
 import Dispatch
+import Foundation
 
 private func resolveHostFocusContext(
   from provider: @Sendable () -> TranscriptionContext?,
@@ -77,7 +78,7 @@ extension DictationSession {
       // `async let`, so a cancel still reaches it: the child inherits this task's
       // cancellation, which is what `cancel()`'s `.connecting` branch relies on
       // to preempt the wait.
-      async let started = mic.start()
+      async let started = startMicWithLatency()
       await beginContextCapture()
       // Only now join the bring-up. Everything above ran while the mic was
       // coming up; the phase still flips to `.recording` only once `start()`
@@ -152,6 +153,12 @@ extension DictationSession {
       }
       setPhase(.failed(.audioCaptureFailed(underlying: error)))
     }
+  }
+
+  private func startMicWithLatency() async throws -> AsyncStream<Data> {
+    let start = ContinuousClock.now
+    defer { RequestLatency.stage("mic-start", since: start, job: currentJob?.id) }
+    return try await mic.start()
   }
 
   /// Captures the paste target and kicks off the press-time AX field-context

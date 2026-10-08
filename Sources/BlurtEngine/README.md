@@ -327,6 +327,30 @@ Three things to know. The value is **process-wide**, not injected: its readers a
 
 Two ways out, neither taken yet: drop it from the public product (its own target, so it keeps its Swift Testing coverage without riding inside `BlurtEngine`), or finish generalizing it — the repo slug and the product name already come from `HostIdentity`, and `GitHubRelease.dmgAsset` matches any `.dmg`, so what remains is that a dictation library contains a self-updater at all. Note the second is not free — `LastUpdateCheckStore` reads its key from the internal `DefaultsKey` enum, and that enum is deliberately the single roster `PersistedSettings.resetAll` sweeps, so a target split has to keep that invariant intact rather than stranding the update stamp outside the reset (which is exactly the bug the roster was created to prevent, twice).
 
+## VibeDictate latency diagnostics
+
+OpenRouter normalization defaults to `openai/gpt-4.1-mini`. Explicit model preferences are preserved;
+an explicitly selected Google model still falls back to mini after HTTP 403.
+
+The `PipelineLatency` unified-log category records microphone start/stop, WAV finalization, request
+preparation, insertion and the post-stop pipeline. Per-request identifiers join totals and URLSession
+transaction metrics: DNS, connection, TLS, upload, wait after upload, download, proxy/connection reuse,
+HTTP status and STT retry attempts/delays. Job identifiers join stages from one dictation. No audio,
+transcripts, vocabulary, request headers, keys or file paths are included.
+
+Inspect a recent VibeDictate session in Console or with:
+
+```bash
+log show --last 1h --info --style compact \
+  --predicate 'subsystem == "app.vibedictate" AND category == "PipelineLatency"'
+```
+
+These are local system logs, not history fields or external telemetry. Missing network timestamps
+are `n/a`, not zero. `waitMs` includes the remote path, queues and processing, rather than pure model
+inference. The post-stop total includes routing, normalization and insertion; `audio-finalize-wait`
+measures waiting for the writer, while `audio-finalize` measures its actual finalization. Injected test
+transports retain their existing behavior and report request totals without network timestamps.
+
 ## Invariants — don't break these
 
 Each was tried the other way and reverted, and they bind engine code as much as the app's. The list is deliberately not repeated here: it lives once, in [AGENTS.md's Settled decisions](../../AGENTS.md#settled-decisions--dont-reintroduce-these) table, alongside the engine conventions those rules rest on (dependency-free by rule; actors own state; the stateless API client stays a `Sendable` struct; new code Swift 6 strict-concurrency clean). `scripts/check-invariants.sh` mechanizes the subset a regex can decide and fails `check.sh` on them, so a good number are enforced rather than remembered — and it pins each rule to the table row it came from, which only works while there is one row to pin to.

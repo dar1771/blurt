@@ -31,6 +31,7 @@ public struct OpenRouterTranscriber: LongSTTClient {
       throw OpenRouterTranscriptionError.missingAPIKey
     }
     let model = modelProvider()
+    let preparationStart = ContinuousClock.now
     let audio = try Data(contentsOf: audioFileURL, options: .mappedIfSafe)
     var request = URLRequest(url: endpoint)
     request.httpMethod = "POST"
@@ -49,18 +50,21 @@ public struct OpenRouterTranscriber: LongSTTClient {
               azure: AzureOptions(
                 enhancedMode: EnhancedMode(modelOptions: ModelOptions(transcribeStyle: "clean")),
                 phraseList: PhraseList(phrases: vocabulary)))) : nil))
+    RequestLatency.stage("stt-prepare", since: preparationStart, bytes: request.httpBody?.count ?? 0)
     return try await send(request)
   }
 
   private func send(_ request: URLRequest) async throws -> String {
     for attempt in 0..<3 {
       try Task.checkCancellation()
-      let (data, response) = try await transport.data(for: request)
+      let (data, response) = try await transport.measuredData(
+        for: request, stage: "stt", attempt: attempt + 1)
       if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
         if http.statusCode == 429, attempt < 2 {
           let delay = Self.retryDelay(http) ?? (attempt == 0 ? 2 : 4)
           // Do not retry earlier than the provider requested or wait indefinitely.
           guard delay <= 30 else { throw OpenRouterTranscriptionError.httpStatus(429) }
+          RequestLatency.retry(attempt: attempt + 1, delay: delay)
           try await sleep(delay)
           continue
         }
